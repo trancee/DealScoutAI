@@ -5,7 +5,7 @@ config/secrets.yaml
 data/
 
 # Binary
-/dealscout
+**/dealscout
 
 # OS
 .DS_Store
