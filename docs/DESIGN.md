@@ -1,7 +1,7 @@
 # DealScout — Design Document
 
-> **Version:** 3.0  
-> **Date:** 2026-04-08  
+> **Version:** 3.0
+> **Date:** 2026-04-08
 > **Status:** Approved
 
 ---
@@ -32,24 +32,24 @@ It is a **pure data pipeline** — no runtime LLM. Shop data is extracted via de
 ### 2.1 High-Level Data Flow
 
 ```
-┌──────────────┐     ┌──────────────────────┐     ┌───────────────────┐
-│  System Cron  │────▶│  Fetcher              │────▶│  Parser           │
-│  (hourly)     │     │  (rate-limited HTTP)  │     │  (HTML or JSON)   │
-└──────────────┘     │  concurrent per shop  │     └────────┬──────────┘
-                     └──────────────────────┘              │ []RawProduct
-                                                           ▼
-                                                  ┌───────────────────┐
-                                                  │  Cleaning          │
-                                                  │  Pipeline          │
-                                                  │  shop → category   │
-                                                  └────────┬──────────┘
-                                                           │ []CleanProduct
-                                                           ▼
-┌──────────────┐     ┌──────────────────────┐     ┌───────────────────┐
-│  Telegram     │◀────│  Deal Evaluator      │◀────│  Storage (SQLite)  │
-│  (sendPhoto)  │     │  (rules + dedup)     │     │  (price history)   │
+┌───────────────┐     ┌──────────────────────┐     ┌───────────────────┐
+│  System Cron  │────▶│  Fetcher             │────▶│  Parser           │
+│  (hourly)     │     │  (rate-limited HTTP) │     │  (HTML or JSON)   │
+└───────────────┘     │  concurrent per shop │     └────────┬──────────┘
+                      └──────────────────────┘              │ []RawProduct
+                                                            ▼
+                                                   ┌───────────────────┐
+                                                   │  Cleaning         │
+                                                   │  Pipeline         │
+                                                   │  shop → category  │
+                                                   └────────┬──────────┘
+                                                            │ []CleanProduct
+                                                            ▼
+┌───────────────┐     ┌──────────────────────┐     ┌───────────────────┐
+│  Telegram     │◀────│  Deal Evaluator      │◀────│  Storage (SQLite) │
+│  (sendPhoto)  │     │  (rules + dedup)     │     │  (price history)  │
 │  Forum Topics │     └──────────────────────┘     └───────────────────┘
-└──────────────┘
+└───────────────┘
 ```
 
 ### 2.2 Processing Pipeline (per cron run)
@@ -123,7 +123,9 @@ DealScout/
 │   ├── shops.yaml                     # Shop definitions + field mappings (nested by category)
 │   ├── deal_rules.yaml                # Per-category deal rules
 │   ├── filters.yaml                   # Per-category skip lists & exclusion regexes
-│   ├── settings.yaml                  # Global settings
+│   ├── settings.yaml                  # Global settings (no secrets)
+│   ├── secrets.yaml                   # Telegram credentials (gitignored)
+│   ├── secrets.yaml.example           # Reference template (committed)
 │   └── templates/                     # POST body templates for GraphQL/API shops
 │       ├── galaxus_smartphone.json
 │       ├── galaxus_laptop.json
@@ -208,7 +210,7 @@ Fatal errors (config parse failure, DB can't open, missing Telegram credentials)
 
 ```
 ┌─────────────────┐       ┌──────────────────────┐       ┌─────────────────────┐
-│    Product       │       │   PriceHistory       │       │  DealNotification   │
+│    Product      │       │   PriceHistory       │       │  DealNotification   │
 ├─────────────────┤       ├──────────────────────┤       ├─────────────────────┤
 │ id (PK)         │──1:N─▶│ id (PK)              │       │ id (PK)             │
 │ name (cleaned)  │       │ product_id (FK)      │       │ product_id (FK)     │
@@ -218,7 +220,7 @@ Fatal errors (config parse failure, DB can't open, missing Telegram credentials)
 │ UNIQUE(name,    │──1:N─▶│ old_price (optional) │       └─────────────────────┘
 │   category)     │       │ url                  │               ▲
 └─────────────────┘       │ timestamp            │               │
-                          └──────────────────────┘       ────1:N──┘
+                          └──────────────────────┘      ────1:N──┘
 
 ┌─────────────────────┐
 │  ExchangeRate       │
@@ -366,7 +368,7 @@ log_level: "INFO"       # DEBUG, INFO, WARNING, ERROR
 log_format: "text"      # text or json
 
 # Database
-database_path: "db/deals"
+database_path: "data/dealscout.db"
 
 # Data retention
 price_history_retention_days: 90
@@ -374,9 +376,7 @@ price_history_retention_days: 90
 # Pagination default (can be overridden per shop category)
 default_max_pages: 5
 
-# Telegram
-telegram_bot_token: ""
-telegram_channel: ""
+# Telegram topics (secrets in secrets.yaml or env vars)
 telegram_topics:
   smartphone: 0          # message_thread_id (0 = General topic)
   laptop: 0
@@ -490,7 +490,25 @@ headphones:
   exclusion_regex: "(?i)Ersatzpolster|Kabel|Etui"
 ```
 
-### 6.5 POST Body Templates
+### 6.5 `config/secrets.yaml`
+
+Gitignored. Contains sensitive credentials. Environment variables take priority.
+
+```yaml
+telegram_bot_token: "123456:ABC-DEF..."
+telegram_channel: "-1001234567890"
+```
+
+**Priority chain:** `TELEGRAM_BOT_TOKEN` env var → `secrets.yaml` → fatal error if neither set.
+
+A `config/secrets.yaml.example` is committed for reference:
+
+```yaml
+telegram_bot_token: ""
+telegram_channel: ""
+```
+
+### 6.6 POST Body Templates
 
 Template files live in `config/templates/`. They contain the raw POST body with placeholders for pagination:
 
@@ -706,7 +724,7 @@ Run: `go test ./...`
 | 23 | Scheduler | System cron, run once and exit |
 | 24 | Logging | `log/slog` (stdlib), structured, with run summary |
 | 25 | Docker | Not needed — single static binary |
-| 26 | Credentials | In `settings.yaml` |
+| 26 | Credentials | `secrets.yaml` (gitignored) + env var override |
 | 27 | Dependencies | 3: modernc.org/sqlite, yaml.v3, goquery |
 | 28 | Error handling | Fatal → exit; shop failures → log + skip |
 | 29 | Testing | `_test.go` + fixture files |

@@ -1,0 +1,16 @@
+# Secrets
+config/secrets.yaml
+
+# Database
+data/
+
+# Binary
+dealscout
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp

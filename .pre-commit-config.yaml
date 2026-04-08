@@ -1,9 +1,0 @@
-repos:
-  - repo: local
-    hooks:
-      - id: gitlint
-        name: gitlint
-        description: Lint commit message (conventional commits)
-        entry: gitlint --staged --msg-filename
-        language: system
-        stages: [commit-msg]
