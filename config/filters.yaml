@@ -1,7 +1,9 @@
 smartphone:
   skip_brands:
+    - AGM
     - Doro
     - Emporia
+    - Olympia
   exclusion_regex: "(?i)Adapter|AirTag|Armband|Back Cover|Book Cover|Cable|Case|Charger|Cover\\b|Duftkerze|Earphones|Etui|Gimbal|Halterung|Headset|Hülle|Induktive|Kalender|Kopfhörer|Ladegerät|Ladestation|Lautsprecher|MagSafe|Powerbank|Schutzfolie|Schutzglas|SmartTag|Stylus|Tastatur|Wireless Charger"
 
 laptop:

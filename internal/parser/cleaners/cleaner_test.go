@@ -207,6 +207,7 @@ func TestConradShopCleaner(t *testing.T) {
 		{"Xiaomi Redmi 9AT Smartphone  32 GB 16.6 cm (6.53 Zoll) Gletscherblau Android 10 Dual-SIM", "Xiaomi Redmi 9AT"},
 		{"Samsung Galaxy A54 5G Smartphone 128 GB 16.3 cm", "Samsung Galaxy A54"},
 		{"Samsung XCover 7 Enterprise Edition 128 GB Schwarz", "Samsung Galaxy XCover 7 EE"},
+		{"Samsung Galaxy A16 EU-Ware 128 GB Schwarz", "Samsung Galaxy A16"},
 		{"Nokia Nokia 105 (2023)", "Nokia 105 (2023)"},
 	}
 

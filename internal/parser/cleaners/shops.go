@@ -67,7 +67,7 @@ func cleanAckermann(name string) string {
 var brackSpecRe = regexp.MustCompile(`(\s*[-,]\s+)|(\d+\s*GB?)|\s+CH$`)
 
 func cleanBrack(name string) string {
-	name = strings.NewReplacer("Enterprise Edition", "EE", "Fairphone Fairphone", "Fairphone").Replace(name)
+	name = strings.NewReplacer("Enterprise Edition", "EE", "Fairphone Fairphone", "Fairphone", "EU-Ware", "").Replace(name)
 
 	if loc := brackSpecRe.FindStringSubmatchIndex(name); loc != nil {
 		name = name[:loc[0]]
@@ -87,6 +87,7 @@ func cleanConrad(name string) string {
 		"Samsung XCover", "Samsung Galaxy XCover",
 		"Edge20", "Edge 20",
 		"Edge Neo 40", "Edge 40 Neo",
+		"EU-Ware", "",
 	).Replace(name)
 
 	// Remove duplicate brand prefix (e.g., "Nokia Nokia 105")
@@ -105,7 +106,7 @@ func cleanConrad(name string) string {
 var folettiSpecRe = regexp.MustCompile(`(?i)\s*[-,]+\s+|\s*\(?(\d+(\s*GB)?[+/])?\d+\s*GB\)?|\s*[45]G|(2|4|6|8|12)/(64|128|256?B?)(GB)?|\s+\(?20[12]\d\)?|\s*\d+([,.]\d+)?\s*(cm|inch|\")|\d{4,5}\s*mAh|\s+20[12]\d|\s+(Hybrid|Dual\W(SIM|Sim)|\s*CH( -|$)|inkl\.|LTE|NFC|smartphone)`)
 
 func cleanFoletti(name string) string {
-	name = strings.NewReplacer("Enterprise Edition", "EE", "Enterprise", "EE", "Renewd ", "", "SMARTPHONE ", "", "Smartphone ", "", "Smartfon ", "").Replace(name)
+	name = strings.NewReplacer("Enterprise Edition", "EE", "Enterprise", "EE", "Renewd ", "", "SMARTPHONE ", "", "Smartphone ", "", "Smartfon ", "", "EU-Ware", "").Replace(name)
 
 	if loc := folettiSpecRe.FindStringSubmatchIndex(name); loc != nil {
 		name = name[:loc[0]]
@@ -159,7 +160,7 @@ func cleanMobilezone(name string) string {
 var orderflowSpecRe = regexp.MustCompile(`\s+\(?(\d\+)?\d+\s*GB?|\s+\(?\d+(\.\d+)?"|\s+\(?[2345]G\)?| Dual SIM|, |\s*CH$`)
 
 func cleanOrderflow(name string) string {
-	name = strings.NewReplacer("Motorola Mobility ", "", "Enterprise Edition", "EE", " 4G ", " ").Replace(name)
+	name = strings.NewReplacer("Motorola Mobility ", "", "Enterprise Edition", "EE", " 4G ", " ", "EU-Ware", "").Replace(name)
 
 	if loc := orderflowSpecRe.FindStringSubmatchIndex(name); loc != nil {
 		name = name[:loc[0]]
