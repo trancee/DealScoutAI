@@ -46,6 +46,8 @@ type ShopCategory struct {
 	Pagination   Pagination        `yaml:"pagination"`
 	Selectors    map[string]string `yaml:"selectors"`
 	Fields       map[string]string `yaml:"fields"`
+	JSONSelector string            `yaml:"json_selector"`
+	PriceDivisor float64           `yaml:"price_divisor"`
 	Currency     string            `yaml:"currency"`
 }
 

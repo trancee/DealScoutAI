@@ -167,7 +167,7 @@ Fatal errors (config parse failure, DB can't open, missing Telegram credentials)
 | `html.go` | Generic HTML parser. Uses CSS selectors (via goquery) declared in `shops.yaml` to find product cards and extract fields (title, price, old_price, URL, image). |
 | `json.go` | Generic JSON parser. Uses dot-notation field paths declared in `shops.yaml` to walk response JSON and extract product arrays and fields. |
 | `price.go` | Shared price string parser. Handles all European formats: `CHF 119.–`, `€ 99,90`, `1'299.00`, `1.299,00`, etc. Strips currency symbols, normalizes separators, returns `float64`. |
-| `registry.go` | Resolves a shop config to the correct parser type + optional shop cleaner + category cleaner. |
+| `registry.go` | Resolves a shop config to the correct parser type (HTML, JSON, or embedded JSON) + optional shop cleaner + category cleaner. |
 | `cleaners/shops/*.go` | Per-shop cleaning functions. Strip shop-specific artifacts from product names. |
 | `cleaners/categories/*.go` | Per-category normalization. Brand/model canonicalization, skip list filtering (reads from `filters.yaml`). |
 
@@ -746,3 +746,7 @@ Run: `go test ./...`
 | 42 | Custom HTTP headers | Per-shop `headers` map in `shops.yaml` for CSRF tokens, API keys, etc. |
 | 43 | Database directory | Auto-created by `storage.Open` if it does not exist |
 | 44 | Debug logging | Fetcher logs request/response at DEBUG level (method, URL, headers, body preview) |
+| 45 | Embedded JSON | `json_selector` extracts JSON from HTML `<script>` tags before parsing with field paths |
+| 46 | Price divisor | `price_divisor` on shop category divides parsed prices (for APIs returning cents) |
+| 47 | Composite title | `title_prefix` field path prepended to `title` (e.g., brand + model) |
+| 48 | Map products | JSON parser handles `map[string]object` in addition to arrays at the products path |

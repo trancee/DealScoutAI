@@ -20,15 +20,29 @@ func ParseJSON(data []byte, fields map[string]string) ([]RawProduct, error) {
 		return nil, fmt.Errorf("missing required field: products")
 	}
 
-	arr, ok := walkPath(root, productsPath).([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("products path %q did not resolve to an array", productsPath)
+	productsRaw := walkPath(root, productsPath)
+
+	var items []interface{}
+	switch v := productsRaw.(type) {
+	case []interface{}:
+		items = v
+	case map[string]interface{}:
+		for _, val := range v {
+			if val != nil {
+				items = append(items, val)
+			}
+		}
+	default:
+		return nil, fmt.Errorf("products path %q resolved to %T, want array or map", productsPath, productsRaw)
 	}
 
 	var products []RawProduct
 
-	for _, item := range arr {
+	for _, item := range items {
 		title := walkString(item, fields["title"])
+		if titlePrefix := walkString(item, fields["title_prefix"]); titlePrefix != "" && title != "" {
+			title = titlePrefix + " " + title
+		}
 		if title == "" {
 			continue
 		}

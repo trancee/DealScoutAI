@@ -74,6 +74,15 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 
 			for _, p := range rawProducts {
 				products++
+
+				if cat.PriceDivisor > 0 {
+					p.Price /= cat.PriceDivisor
+					if p.OldPrice != nil {
+						divided := *p.OldPrice / cat.PriceDivisor
+						p.OldPrice = &divided
+					}
+				}
+
 				cleaned := p.Title
 				if shopClean != nil {
 					cleaned = shopClean(cleaned)

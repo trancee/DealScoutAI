@@ -21,6 +21,7 @@ DealScout is designed to run via system cron. It is not a long-running daemon.
 ## Features
 
 - **Declarative shop configuration** — add new shops via YAML, no code changes needed for standard HTML/JSON shops
+- **Embedded JSON extraction** — parse product data from `<script>` tags in HTML (e.g., JSON-LD, server-side state)
 - **Two-stage product name cleaning** — shop cleaners + category cleaners for cross-shop product matching
 - **Cross-shop price tracking** — one product identity across shops, price history per shop
 - **Smart deal detection** — based on tracked price history, not shop-advertised discounts

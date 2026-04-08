@@ -65,3 +65,23 @@ shops:
           url: ".product-card-name[href]"
           image: ".product-card-image img[src]"
         currency: "CHF"
+
+  - name: "Brack"
+    source_type: "html"
+    cleaner: "brack"
+    base_url: "https://www.brack.ch"
+    categories:
+      - category: "smartphone"
+        url: "https://www.brack.ch/it-multimedia/smartphone?filter%5Bavailability%5D%5B%5D=Verf%C3%BCgbar&filter%5Bprice_standard%5D%5B%5D=50~~~350&sortProducts=priceasc&query=*"
+        max_pages: 1
+        json_selector: "script#b2c-search-products"
+        price_divisor: 100
+        fields:
+          products: "productDataMap"
+          title_prefix: "manufacturer.name"
+          title: "description.nameWithoutManufacturer"
+          price: "price.priceWithVat"
+          old_price: "price.standardPrice.priceWithVat"
+          url: "url"
+          image: "images.0.sizes.0.src"
+        currency: "CHF"

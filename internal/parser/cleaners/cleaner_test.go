@@ -168,3 +168,29 @@ func TestCleanPipeline(t *testing.T) {
 		t.Errorf("kept[0] = %q, want %q", kept[0], "Samsung Galaxy A15 128 GB Black")
 	}
 }
+
+func TestBrackShopCleaner(t *testing.T) {
+	clean := cleaners.ShopCleaner("brack")
+	if clean == nil {
+		t.Fatal("ShopCleaner(brack) returned nil")
+	}
+
+	tests := []struct {
+		input, want string
+	}{
+		{"Samsung Galaxy A54 5G 128 GB Awesome Graphite", "Samsung Galaxy A54"},
+		{"Apple iPhone 15 128 GB Schwarz", "Apple iPhone 15"},
+		{"Samsung Galaxy XCover 7 Enterprise Edition", "Samsung Galaxy XCover 7 EE"},
+		{"Fairphone Fairphone 5 256 GB Schwarz Matt", "Fairphone 5"},
+		{"Google Pixel 9a", "Google Pixel 9a"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := clean(tt.input)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

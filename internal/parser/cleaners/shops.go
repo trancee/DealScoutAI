@@ -63,3 +63,15 @@ func cleanAckermann(name string) string {
 
 	return strings.TrimSpace(name)
 }
+
+var brackSpecRe = regexp.MustCompile(`(\s*[-,]\s+)|(\d+\s*GB?)|\s+CH$`)
+
+func cleanBrack(name string) string {
+	name = strings.NewReplacer("Enterprise Edition", "EE", "Fairphone Fairphone", "Fairphone").Replace(name)
+
+	if loc := brackSpecRe.FindStringSubmatchIndex(name); loc != nil {
+		name = name[:loc[0]]
+	}
+
+	return strings.TrimSpace(name)
+}
