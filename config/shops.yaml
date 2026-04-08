@@ -20,34 +20,36 @@ shops:
           image: "img.s-image[src]"
         currency: "EUR"
 
-  - name: "Galaxus"
-    source_type: "json"
-    method: "POST"
-    cleaner: "galaxus"
-    headers:
-      content-type: "application/json"
-      apollo-require-preflight: "true"
-      origin: "https://www.galaxus.ch"
-      referer: "https://www.galaxus.ch/"
-      accept: "application/json"
-      accept-language: "de-CH,de;q=0.9,en;q=0.8"
-    categories:
-      - category: "smartphone"
-        url: "https://www.galaxus.ch/api/graphql/product-type-filter-products"
-        body_template: "templates/galaxus_smartphone.json"
-        max_pages: 5
-        pagination:
-          type: "offset"
-          param: "offset"
-          per_page: 24
-        fields:
-          products: "data.productType.filterProducts.products.results"
-          title: "product.name"
-          price: "offer.price.amountInclusive"
-          old_price: "offer.insteadOfPrice.price.amountInclusive"
-          url: "product.productId"
-          image: "product.imageUrl"
-        currency: "CHF"
+  # Galaxus is disabled — blocked by Akamai Bot Manager (requires headless browser).
+  # See DESIGN.md §13 for future headless browser support.
+  # - name: "Galaxus"
+  #   source_type: "json"
+  #   method: "POST"
+  #   cleaner: "galaxus"
+  #   headers:
+  #     content-type: "application/json"
+  #     apollo-require-preflight: "true"
+  #     origin: "https://www.galaxus.ch"
+  #     referer: "https://www.galaxus.ch/"
+  #     accept: "application/json"
+  #     accept-language: "de-CH,de;q=0.9,en;q=0.8"
+  #   categories:
+  #     - category: "smartphone"
+  #       url: "https://www.galaxus.ch/api/graphql/product-type-filter-products"
+  #       body_template: "templates/galaxus_smartphone.json"
+  #       max_pages: 5
+  #       pagination:
+  #         type: "offset"
+  #         param: "offset"
+  #         per_page: 24
+  #       fields:
+  #         products: "data.productType.filterProducts.products.results"
+  #         title: "product.name"
+  #         price: "offer.price.amountInclusive"
+  #         old_price: "offer.insteadOfPrice.price.amountInclusive"
+  #         url: "product.productId"
+  #         image: "product.imageUrl"
+  #       currency: "CHF"
 
   - name: "Ackermann"
     source_type: "html"
