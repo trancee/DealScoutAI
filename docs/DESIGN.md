@@ -759,3 +759,4 @@ Run: `go test ./...`
 | 55 | Mediamarkt shop | HTML parsing with `data-test` attribute selectors, paginated listing |
 | 56 | JSONP callback stripping | `jsonp_callback` config strips JSONP wrapper (e.g., `X({...});` → `{...}`) before JSON parsing |
 | 57 | Orderflow shop | HTML parsing (same platform as Foletti), expanded accessory exclusion filter |
+| 58 | Response dump | Each shop fetch is saved to `dump_dir/<shop>/<category>.<page>.txt` with curl command header; cleared per shop on each run |

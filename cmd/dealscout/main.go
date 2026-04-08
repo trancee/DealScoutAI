@@ -43,6 +43,7 @@ func main() {
 		Seed:     *seed,
 		DryRun:   *dryRun,
 		ShopName: *shopFilter,
+		DumpDir:  cfg.Settings.DumpDir,
 	})
 }
 

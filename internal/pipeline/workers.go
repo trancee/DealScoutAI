@@ -16,7 +16,7 @@ import (
 	"github.com/trancee/DealScout/internal/parser/cleaners"
 )
 
-func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, summary *Summary) []deal.Deal {
+func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, dumpDir string, summary *Summary) []deal.Deal {
 	var (
 		mu    sync.Mutex
 		deals []deal.Deal
@@ -32,7 +32,8 @@ func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Conver
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			shopDeals, products, errors := processShop(shop, f, conv, eval, filters, seedMode)
+			clearShopDumpDir(dumpDir, shop.Name)
+			shopDeals, products, errors := processShop(shop, f, conv, eval, filters, seedMode, dumpDir)
 
 			mu.Lock()
 			deals = append(deals, shopDeals...)
@@ -46,7 +47,7 @@ func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Conver
 	return deals
 }
 
-func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool) ([]deal.Deal, int, int) {
+func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, dumpDir string) ([]deal.Deal, int, int) {
 	var (
 		deals    []deal.Deal
 		products int
@@ -66,6 +67,9 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 				break
 			}
 
+			dumpResponse(dumpDir, shop.Name, cat.Category, page,
+				fetchMethod(cat), buildRequestURL(cat, page), shop.Headers, fetchBody(cat, page), data)
+
 			if cat.JSONPCallback != "" {
 				data = stripJSONP(data, cat.JSONPCallback)
 			}
@@ -78,7 +82,7 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 			}
 
 			if cat.PriceAPI != nil {
-				rawProducts = enrichPrices(rawProducts, cat.PriceAPI, f, cat, shop)
+				rawProducts = enrichPrices(rawProducts, cat.PriceAPI, f, cat, shop, dumpDir)
 			}
 
 			for _, p := range rawProducts {
@@ -176,4 +180,27 @@ func filterShops(shops []config.Shop, name string) []config.Shop {
 		}
 	}
 	return nil
+}
+
+func fetchMethod(cat config.ShopCategory) string {
+	if cat.BodyTemplate != "" || cat.Pagination.Type == "offset" {
+		return "POST"
+	}
+	return "GET"
+}
+
+func fetchBody(cat config.ShopCategory, page int) string {
+	if cat.BodyTemplate == "" {
+		return ""
+	}
+	tpl, err := os.ReadFile(cat.BodyTemplate)
+	if err != nil {
+		return ""
+	}
+	body := string(tpl)
+	if cat.Pagination.Type == "offset" {
+		offset := page * cat.Pagination.PerPage
+		body = strings.ReplaceAll(body, "{offset}", fmt.Sprintf("%d", offset))
+	}
+	return body
 }

@@ -27,6 +27,7 @@ DealScout is designed to run via system cron. It is not a long-running daemon.
 - **Smart deal detection** — based on tracked price history, not shop-advertised discounts
 - **Notification deduplication** — configurable cooldown window per product+shop
 - **Concurrent fetching** — shops processed in parallel with a configurable worker pool
+- **Response dumps** — every HTTP response saved to disk with a reproducible `curl` command for debugging
 - **Zero CGO** — pure Go, single static binary, cross-compiles to any OS/arch
 - **Minimal dependencies** — 3 direct dependencies: `goquery`, `yaml.v3`, `modernc.org/sqlite`
 

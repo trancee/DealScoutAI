@@ -16,6 +16,7 @@ type Options struct {
 	Seed     bool
 	DryRun   bool
 	ShopName string
+	DumpDir  string
 }
 
 // Summary holds run statistics.
@@ -42,7 +43,7 @@ func Run(cfg *config.Config, db *storage.Database, opts Options) Summary {
 	f := fetcher.New(cfg.Settings.FetchDelaySeconds, cfg.Settings.MaxRetries)
 
 	shops := filterShops(cfg.Shops, opts.ShopName)
-	deals := collectDeals(shops, f, conv, eval, cfg.Filters, opts.Seed, &summary)
+	deals := collectDeals(shops, f, conv, eval, cfg.Filters, opts.Seed, opts.DumpDir, &summary)
 
 	summary.DealsFound = len(deals)
 	sendNotifications(deals, cfg, db, opts, &summary)

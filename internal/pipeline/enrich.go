@@ -14,7 +14,7 @@ import (
 
 // enrichPrices fetches prices from a secondary API and merges them into products.
 // Products without a price match are returned with Price=0 (filtered by sanity bounds later).
-func enrichPrices(products []parser.RawProduct, priceAPI *config.PriceAPI, f *fetcher.Fetcher, cat config.ShopCategory, shop config.Shop) []parser.RawProduct {
+func enrichPrices(products []parser.RawProduct, priceAPI *config.PriceAPI, f *fetcher.Fetcher, cat config.ShopCategory, shop config.Shop, dumpDir string) []parser.RawProduct {
 	if priceAPI == nil {
 		return products
 	}
@@ -32,6 +32,9 @@ func enrichPrices(products []parser.RawProduct, priceAPI *config.PriceAPI, f *fe
 		slog.Error("price API fetch failed", "url", priceAPI.URL, "error", err)
 		return products
 	}
+
+	dumpResponse(dumpDir, shop.Name, cat.Category+"_prices", 0,
+		"POST", priceAPI.URL, priceAPI.Headers, body, data)
 
 	priceMap, err := parsePriceResponse(data, priceAPI)
 	if err != nil {
