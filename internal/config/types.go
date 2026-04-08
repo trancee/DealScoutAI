@@ -39,17 +39,18 @@ type Shop struct {
 
 // ShopCategory represents one category within a shop.
 type ShopCategory struct {
-	Category     string            `yaml:"category"`
-	URL          string            `yaml:"url"`
-	BodyTemplate string            `yaml:"body_template"`
-	MaxPages     int               `yaml:"max_pages"`
-	Pagination   Pagination        `yaml:"pagination"`
-	Selectors    map[string]string `yaml:"selectors"`
-	Fields       map[string]string `yaml:"fields"`
-	JSONSelector string            `yaml:"json_selector"`
-	PriceDivisor float64           `yaml:"price_divisor"`
-	PriceAPI     *PriceAPI         `yaml:"price_api"`
-	Currency     string            `yaml:"currency"`
+	Category      string            `yaml:"category"`
+	URL           string            `yaml:"url"`
+	BodyTemplate  string            `yaml:"body_template"`
+	MaxPages      int               `yaml:"max_pages"`
+	Pagination    Pagination        `yaml:"pagination"`
+	Selectors     map[string]string `yaml:"selectors"`
+	Fields        map[string]string `yaml:"fields"`
+	JSONSelector  string            `yaml:"json_selector"`
+	PriceDivisor  float64           `yaml:"price_divisor"`
+	PriceAPI      *PriceAPI         `yaml:"price_api"`
+	JSONPCallback string            `yaml:"jsonp_callback"`
+	Currency      string            `yaml:"currency"`
 }
 
 // PriceAPI defines a secondary API call to fetch prices for products.

@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
 	"os"
@@ -63,6 +64,10 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 				slog.Error("fetch failed", "shop", shop.Name, "category", cat.Category, "page", page, "error", err)
 				errors++
 				break
+			}
+
+			if cat.JSONPCallback != "" {
+				data = stripJSONP(data, cat.JSONPCallback)
 			}
 
 			rawProducts, err := parser.Parse(cat, data, shop.BaseURL)
@@ -145,6 +150,20 @@ func buildFilter(category string, filters map[string]config.Filter) cleaners.Fil
 		return nil
 	}
 	return cleaners.NewFilter(f)
+}
+
+func stripJSONP(data []byte, callback string) []byte {
+	prefix := []byte(callback + "(")
+	if !bytes.HasPrefix(data, prefix) {
+		return data
+	}
+	data = data[len(prefix):]
+	// Strip trailing ");", ")", or ")\n"
+	data = bytes.TrimRight(data, ";\n\r ")
+	if len(data) > 0 && data[len(data)-1] == ')' {
+		data = data[:len(data)-1]
+	}
+	return data
 }
 
 func filterShops(shops []config.Shop, name string) []config.Shop {

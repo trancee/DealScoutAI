@@ -177,3 +177,19 @@ shops:
           url: "a[href*='/de/product/']"
           image: "[data-test='product-image'][src]"
         currency: "CHF"
+
+  - name: "mobilezone"
+    source_type: "json"
+    cleaner: "mobilezone"
+    categories:
+      - category: "smartphone"
+        url: "https://search.epoq.de/inbound-servletapi/getSearchResult?full&ff=e:alloc_THEME&fv=alle_handys&ff=c:anzeigename&fv=Handys&ff=e:isPriceVariant&fv=0&callback=X&tenantId=mobilezone-ch-2019&sessionId=f87cc9415cf968d4d633dd6d15f812ca&orderBy=e:sorting_price&order=asc&limit=100&offset=0&style=compact&format=json&query="
+        max_pages: 1
+        jsonp_callback: "X"
+        fields:
+          products: "result.findings.finding"
+          title: "match-item.g:description.$"
+          price: "match-item.g:price.$"
+          old_price: "match-item.g:old_price.$"
+          url: "match-item.link.$"
+        currency: "CHF"

@@ -757,3 +757,4 @@ Run: `go test ./...`
 | 53 | Array index in field paths | JSON `walkPath` supports `prices.0.finalPrice` for array element access |
 | 54 | GET request headers | `Fetcher.Get` accepts optional headers; `fetchPage` passes shop headers for all request types |
 | 55 | Mediamarkt shop | HTML parsing with `data-test` attribute selectors, paginated listing |
+| 56 | JSONP callback stripping | `jsonp_callback` config strips JSONP wrapper (e.g., `X({...});` → `{...}`) before JSON parsing |

@@ -295,3 +295,29 @@ func TestMediamarktShopCleaner(t *testing.T) {
 		})
 	}
 }
+
+func TestMobilezoneShopCleaner(t *testing.T) {
+	clean := cleaners.ShopCleaner("mobilezone")
+	if clean == nil {
+		t.Fatal("ShopCleaner(mobilezone) returned nil")
+	}
+
+	tests := []struct {
+		input, want string
+	}{
+		{"Samsung Galaxy A16 128GB Black", "Samsung Galaxy A16"},
+		{"Apple iPhone 16 Pro 256GB Desert Titanium", "Apple iPhone 16 Pro"},
+		{"Xiaomi Redmi Note 14 Pro 5G 256GB Phantom Purple", "Xiaomi Redmi Note 14 Pro"},
+		{"Samsung Galaxy Xcover5 64GB Black", "Samsung Galaxy XCover 5"},
+		{"Google Pixel 9a 128GB Iris Dual Sim", "Google Pixel 9a"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := clean(tt.input)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

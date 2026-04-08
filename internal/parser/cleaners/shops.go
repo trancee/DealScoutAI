@@ -143,3 +143,15 @@ func cleanMediamarkt(name string) string {
 
 	return strings.TrimSpace(name)
 }
+
+var mobilezoneSpecRe = regexp.MustCompile(`\s+\(?\d+\s*GB?|\s+\(?\d+(\.\d+)?"| Dual Sim`)
+
+func cleanMobilezone(name string) string {
+	name = strings.NewReplacer(" Xcover5", " XCover 5", " 5G", "").Replace(name)
+
+	if loc := mobilezoneSpecRe.FindStringSubmatchIndex(name); loc != nil {
+		name = name[:loc[0]]
+	}
+
+	return strings.TrimSpace(name)
+}
