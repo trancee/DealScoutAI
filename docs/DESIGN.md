@@ -158,7 +158,7 @@ Fatal errors (config parse failure, DB can't open, missing Telegram credentials)
 
 | File | Responsibility |
 |---|---|
-| `fetcher.go` | Downloads a URL with configurable delay between requests, User-Agent rotation, optional proxy support, and exponential-backoff retries on HTTP 429/5xx. Supports GET and POST (with body from template files, placeholders replaced for pagination). |
+| `fetcher.go` | Downloads a URL with configurable delay between requests, User-Agent rotation, optional proxy support, and exponential-backoff retries on HTTP 429/5xx. Supports GET and POST (with body from template files, placeholders replaced for pagination). Applies per-shop custom HTTP headers (e.g., CSRF tokens). Logs request/response details at DEBUG level. |
 
 #### `internal/parser/`
 
@@ -181,7 +181,7 @@ Fatal errors (config parse failure, DB can't open, missing Telegram credentials)
 
 | File | Responsibility |
 |---|---|
-| `database.go` | SQLite connection (WAL mode for concurrent goroutines), table creation, migrations, retention pruning. |
+| `database.go` | SQLite connection (WAL mode for concurrent goroutines), auto-creates parent directories for the database path, table creation, migrations, retention pruning. |
 | `models.go` | Data structures and DB queries for Product, PriceHistory, DealNotification, ExchangeRate. |
 
 #### `internal/notifier/`
@@ -391,6 +391,9 @@ shops:
     source_type: "json"
     method: "POST"
     cleaner: "galaxus"
+    headers:                             # optional, per-shop custom HTTP headers
+      content-type: "application/json"
+      apollo-require-preflight: "true"
     categories:
       - category: "smartphone"
         url: "https://www.galaxus.ch/api/graphql/product-type-filter-products"
@@ -740,3 +743,6 @@ Run: `go test ./...`
 | 39 | CLI flags | `--config`, `--seed`, `--dry-run`, `--shop` |
 | 40 | Concurrency | Worker pool per shop, configurable `max_concurrent_shops` |
 | 41 | Image handling | Best effort URL pass-through, fallback to sendMessage |
+| 42 | Custom HTTP headers | Per-shop `headers` map in `shops.yaml` for CSRF tokens, API keys, etc. |
+| 43 | Database directory | Auto-created by `storage.Open` if it does not exist |
+| 44 | Debug logging | Fetcher logs request/response at DEBUG level (method, URL, headers, body preview) |
