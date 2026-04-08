@@ -60,6 +60,32 @@ func TestUnknownShopCleanerReturnsNil(t *testing.T) {
 	}
 }
 
+func TestAckermannShopCleaner(t *testing.T) {
+	clean := cleaners.ShopCleaner("ackermann")
+	if clean == nil {
+		t.Fatal("ShopCleaner(ackermann) returned nil")
+	}
+
+	tests := []struct {
+		input, want string
+	}{
+		{"Smartphone »225, 4G Blau«, Blau, 6,1 cm/2,4 Zoll, 0,128 GB Speicherplatz", "225"},
+		{"Smartphone »Galaxy A16 128 GB Blau/Schwarz«", "Galaxy A16"},
+		{"Smartphone »iPhone 16 Pro 256 GB Desert Titanium«", "iPhone 16 Pro"},
+		{"Smartphone »Redmi Note 14 Pro 5G 256 GB Phantom Purple«", "Redmi Note 14 Pro"},
+		{"Smartphone »moto g85 5G 256 GB Cobalt Blue«", "moto g85"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := clean(tt.input)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestCategoryFilterSkipBrands(t *testing.T) {
 	f := cleaners.NewFilter(config.Filter{
 		SkipBrands:     []string{"Doro", "Emporia"},

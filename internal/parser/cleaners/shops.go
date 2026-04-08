@@ -45,3 +45,21 @@ func cleanAmazon(name string) string {
 	name = amazonSuffixRe.ReplaceAllString(name, "")
 	return strings.TrimSpace(name)
 }
+
+var ackermannGuillemetsRe = regexp.MustCompile(`»(.*?)«`)
+var ackermannSpecSuffixRe = regexp.MustCompile(`(?i)(,\s*)?\d+\s*GB|(,\s*)?\(?[2345]G\)?| LTE`)
+
+func cleanAckermann(name string) string {
+	// Ackermann format: "Type »Brand Model Specs« extra description"
+	// Extract the content between guillemets as the product name.
+	if matches := ackermannGuillemetsRe.FindStringSubmatch(name); len(matches) > 1 {
+		name = matches[1]
+	}
+
+	// Strip storage/network suffixes (e.g., "128 GB", "5G", "LTE").
+	if loc := ackermannSpecSuffixRe.FindStringIndex(name); loc != nil {
+		name = name[:loc[0]]
+	}
+
+	return strings.TrimSpace(name)
+}

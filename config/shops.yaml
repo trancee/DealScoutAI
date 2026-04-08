@@ -27,6 +27,10 @@ shops:
     headers:
       content-type: "application/json"
       apollo-require-preflight: "true"
+      origin: "https://www.galaxus.ch"
+      referer: "https://www.galaxus.ch/"
+      accept: "application/json"
+      accept-language: "de-CH,de;q=0.9,en;q=0.8"
     categories:
       - category: "smartphone"
         url: "https://www.galaxus.ch/api/graphql/product-type-filter-products"
@@ -43,4 +47,21 @@ shops:
           old_price: "offer.insteadOfPrice.price.amountInclusive"
           url: "product.productId"
           image: "product.imageUrl"
+        currency: "CHF"
+
+  - name: "Ackermann"
+    source_type: "html"
+    cleaner: "ackermann"
+    base_url: "https://www.ackermann.ch"
+    categories:
+      - category: "smartphone"
+        url: "https://www.ackermann.ch/technik/multimedia/smartphones-telefone/?f=eyJmaWx0ZXJfUHJvZHVrdHR5cF8xIjpbImZiX3ByZGt0LnAxX3NtcnQuaG5fMzgiXSwiZmlsdGVyX3ByaWNlIjpbIjUwLTM1MCJdfQ%3D%3D&o=price-asc"
+        max_pages: 1
+        selectors:
+          product_card: "li.product-card"
+          title: ".product-card-name"
+          price: ".price-value"
+          old_price: ".price-strike"
+          url: ".product-card-name[href]"
+          image: ".product-card-image img[src]"
         currency: "CHF"
