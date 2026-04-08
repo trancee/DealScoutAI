@@ -1,0 +1,10 @@
+[{
+  "operationName": "PRODUCT_TYPE_FILTER_PRODUCTS",
+  "variables": {
+    "productTypeId": 24,
+    "offset": {offset},
+    "limit": 24,
+    "filters": []
+  },
+  "query": "query PRODUCT_TYPE_FILTER_PRODUCTS($productTypeId: Int!, $offset: Int, $limit: Int, $filters: [FilterInput!]) { productType(id: $productTypeId) { filterProducts(offset: $offset, limit: $limit, filters: $filters) { products { results { product { name productId imageUrl } offer { price { amountInclusive } insteadOfPrice { price { amountInclusive } } } } } } } }"
+}]
