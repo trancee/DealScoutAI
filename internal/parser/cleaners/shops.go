@@ -113,3 +113,21 @@ func cleanFoletti(name string) string {
 
 	return strings.TrimSpace(name)
 }
+
+var interdiscountSpecRe = regexp.MustCompile(`\(\d+\s*GB?|\(\d\.\d{1,2}"|\s+[2345]G| LTE`)
+
+func cleanInterdiscount(name string) string {
+	name = strings.NewReplacer("Enterprise Edition", "EE").Replace(name)
+
+	if loc := interdiscountSpecRe.FindStringSubmatchIndex(name); loc != nil {
+		name = name[:loc[0]]
+	}
+
+	// Remove duplicate brand prefix (e.g., "NOKIA Nokia 105")
+	parts := strings.SplitN(name, " ", 3)
+	if len(parts) >= 2 && strings.EqualFold(parts[0], parts[1]) {
+		name = parts[0] + " " + strings.Join(parts[2:], " ")
+	}
+
+	return strings.TrimSpace(name)
+}

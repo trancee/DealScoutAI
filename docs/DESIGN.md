@@ -754,3 +754,5 @@ Run: `go test ./...`
 | 50 | Optional price field | JSON parser treats price as optional (defaults to 0) for search-only APIs |
 | 51 | POST body detection | `fetchPage` sends POST when `body_template` is set, regardless of pagination type |
 | 52 | Foletti shop | HTML parsing with `page_param` pagination, spec-stripping cleaner |
+| 53 | Array index in field paths | JSON `walkPath` supports `prices.0.finalPrice` for array element access |
+| 54 | GET request headers | `Fetcher.Get` accepts optional headers; `fetchPage` passes shop headers for all request types |

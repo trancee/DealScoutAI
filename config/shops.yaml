@@ -135,3 +135,24 @@ shops:
           url: "h4 a[href]"
           image: "img.img-fluid[src]"
         currency: "CHF"
+
+  - name: "Interdiscount"
+    source_type: "json"
+    cleaner: "interdiscount"
+    base_url: "https://www.interdiscount.ch"
+    headers:
+      accept: "application/json"
+      accept-language: "de-CH,de;q=0.9"
+      referer: "https://www.interdiscount.ch/"
+      origin: "https://www.interdiscount.ch"
+    categories:
+      - category: "smartphone"
+        url: "https://www.interdiscount.ch/idocc/occ/id/products/search?currentPage=0&pageSize=100&query=:price-asc:categoryPath:/1/400/4100:categoryPath:/1/400/4100/411000:price_min:50:price_max:350:producttype411001k:Smartphone&lang=de"
+        max_pages: 1
+        fields:
+          products: "products"
+          title: "name"
+          price: "productPriceData.prices.0.finalPrice.value"
+          old_price: "productPriceData.prices.0.insteadPrice.value"
+          url: "code"
+        currency: "CHF"

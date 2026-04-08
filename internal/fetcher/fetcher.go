@@ -46,8 +46,13 @@ func (f *Fetcher) WithRetryBaseDelay(d time.Duration) *Fetcher {
 }
 
 // Get fetches a URL via HTTP GET and returns the response body.
-func (f *Fetcher) Get(url string) ([]byte, error) {
-	return f.doWithRetries("GET", url, "", nil)
+// Optional headers are added to the request.
+func (f *Fetcher) Get(url string, headers ...map[string]string) ([]byte, error) {
+	var h map[string]string
+	if len(headers) > 0 {
+		h = headers[0]
+	}
+	return f.doWithRetries("GET", url, "", h)
 }
 
 // Post fetches a URL via HTTP POST with a body built from a template string

@@ -245,3 +245,28 @@ func TestFolettiShopCleaner(t *testing.T) {
 		})
 	}
 }
+
+func TestInterdiscountShopCleaner(t *testing.T) {
+	clean := cleaners.ShopCleaner("interdiscount")
+	if clean == nil {
+		t.Fatal("ShopCleaner(interdiscount) returned nil")
+	}
+
+	tests := []struct {
+		input, want string
+	}{
+		{"SAMSUNG Galaxy A16 (128 GB, Schwarz, 6.7\", 50 MP, 5G)", "SAMSUNG Galaxy A16"},
+		{"APPLE iPhone 15 (128 GB, Schwarz, 6.1\", 48 MP, 5G)", "APPLE iPhone 15"},
+		{"NOKIA Nokia 225 4G (64 MB, 2.4\", 0.3 MP, Blau)", "NOKIA 225"},
+		{"SAMSUNG Galaxy XCover 7 Enterprise Edition (128 GB)", "SAMSUNG Galaxy XCover 7 EE"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := clean(tt.input)
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

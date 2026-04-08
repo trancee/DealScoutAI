@@ -126,7 +126,7 @@ func fetchPage(f *fetcher.Fetcher, shop config.Shop, cat config.ShopCategory, pa
 	case "page_param":
 		pageNum := cat.Pagination.Start + page
 		url := strings.ReplaceAll(cat.URL, "{page}", fmt.Sprintf("%d", pageNum))
-		return f.Get(url)
+		return f.Get(url, shop.Headers)
 	default:
 		if cat.BodyTemplate != "" {
 			tpl, err := os.ReadFile(cat.BodyTemplate)
@@ -135,7 +135,7 @@ func fetchPage(f *fetcher.Fetcher, shop config.Shop, cat config.ShopCategory, pa
 			}
 			return f.Post(cat.URL, string(tpl), nil, shop.Headers)
 		}
-		return f.Get(cat.URL)
+		return f.Get(cat.URL, shop.Headers)
 	}
 }
 

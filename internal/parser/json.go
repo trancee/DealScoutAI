@@ -3,6 +3,7 @@ package parser
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -82,11 +83,18 @@ func walkPath(data interface{}, path string) interface{} {
 	current := data
 
 	for _, part := range parts {
-		m, ok := current.(map[string]interface{})
-		if !ok {
+		switch v := current.(type) {
+		case map[string]interface{}:
+			current = v[part]
+		case []interface{}:
+			idx, err := strconv.Atoi(part)
+			if err != nil || idx < 0 || idx >= len(v) {
+				return nil
+			}
+			current = v[idx]
+		default:
 			return nil
 		}
-		current = m[part]
 		if current == nil {
 			return nil
 		}
