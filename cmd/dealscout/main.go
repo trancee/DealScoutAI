@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/trancee/DealScout/internal/config"
+	"github.com/trancee/DealScout/internal/storage"
 )
 
 func main() {
@@ -30,6 +31,15 @@ func main() {
 		"filters", len(cfg.Filters),
 		"base_currency", cfg.Settings.BaseCurrency,
 	)
+
+	db, err := storage.Open(cfg.Settings.DatabasePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() { _ = db.Close() }()
+
+	slog.Info("database opened", "path", cfg.Settings.DatabasePath)
 
 	// Flags are parsed and available for future phases.
 	_ = seed
