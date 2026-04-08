@@ -131,3 +131,15 @@ func cleanInterdiscount(name string) string {
 
 	return strings.TrimSpace(name)
 }
+
+var mediamarktSpecRe = regexp.MustCompile(` - |(64|128)\s*GB|\s+[2345]G|\s+CH$`)
+
+func cleanMediamarkt(name string) string {
+	name = strings.NewReplacer("ONE PLUS", "ONEPLUS", "Enterprise Edition", "EE").Replace(name)
+
+	if loc := mediamarktSpecRe.FindStringSubmatchIndex(name); loc != nil {
+		name = name[:loc[0]]
+	}
+
+	return strings.TrimSpace(name)
+}

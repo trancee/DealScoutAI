@@ -756,3 +756,4 @@ Run: `go test ./...`
 | 52 | Foletti shop | HTML parsing with `page_param` pagination, spec-stripping cleaner |
 | 53 | Array index in field paths | JSON `walkPath` supports `prices.0.finalPrice` for array element access |
 | 54 | GET request headers | `Fetcher.Get` accepts optional headers; `fetchPage` passes shop headers for all request types |
+| 55 | Mediamarkt shop | HTML parsing with `data-test` attribute selectors, paginated listing |

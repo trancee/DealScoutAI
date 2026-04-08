@@ -156,3 +156,24 @@ shops:
           old_price: "productPriceData.prices.0.insteadPrice.value"
           url: "code"
         currency: "CHF"
+
+  - name: "Mediamarkt"
+    source_type: "html"
+    cleaner: "mediamarkt"
+    base_url: "https://www.mediamarkt.ch"
+    categories:
+      - category: "smartphone"
+        url: "https://www.mediamarkt.ch/de/category/smartphone-680815.html?filter=currentprice:50-350&sort=currentprice+asc&page={page}"
+        max_pages: 5
+        pagination:
+          type: "page_param"
+          param: "page"
+          start: 1
+        selectors:
+          product_card: "[data-test='mms-product-card']"
+          title: "[data-test='product-title']"
+          price: "[data-test='mms-price'] span[aria-hidden='true']"
+          old_price: "[data-test='mms-strike-price-type-rrp'] span[aria-hidden='true']"
+          url: "a[href*='/de/product/']"
+          image: "[data-test='product-image'][src]"
+        currency: "CHF"

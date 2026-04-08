@@ -25,6 +25,8 @@ func ShopCleaner(shopName string) CleanFunc {
 		return cleanFoletti
 	case "interdiscount":
 		return cleanInterdiscount
+	case "mediamarkt":
+		return cleanMediamarkt
 	default:
 		return nil
 	}
