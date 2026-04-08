@@ -3,6 +3,7 @@ package fetcher
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"strings"
@@ -111,6 +112,14 @@ func (f *Fetcher) do(method, url, body string, headers map[string]string) ([]byt
 		req.Header.Set(k, v)
 	}
 
+	slog.Debug("http request",
+		"method", method,
+		"url", url,
+		"headers", req.Header,
+		"body_length", len(body),
+		"body_preview", truncate(body, 500),
+	)
+
 	resp, err := f.client.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("executing request: %w", err)
@@ -121,6 +130,14 @@ func (f *Fetcher) do(method, url, body string, headers map[string]string) ([]byt
 	if err != nil {
 		return nil, resp.StatusCode, fmt.Errorf("reading response: %w", err)
 	}
+
+	slog.Debug("http response",
+		"method", method,
+		"url", url,
+		"status", resp.StatusCode,
+		"body_length", len(respBody),
+		"body_preview", truncate(string(respBody), 500),
+	)
 
 	return respBody, resp.StatusCode, nil
 }
@@ -140,6 +157,13 @@ func (f *Fetcher) rateLimit() {
 		time.Sleep(delay - elapsed)
 	}
 	f.lastRequest = time.Now()
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 func isRetryable(statusCode int) bool {
