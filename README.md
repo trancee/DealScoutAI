@@ -169,21 +169,106 @@ laptop:
   exclusion_regex: "(?i)Tasche|Sleeve"
 ```
 
-### 7. Add Telegram credentials
+### 7. Set up Telegram notifications
+
+DealScout sends notifications to a Telegram supergroup with Forum Topics. Each product category (smartphone, laptop, etc.) gets its own topic thread.
+
+#### Step 1: Create a Telegram Bot
+
+1. Open Telegram and search for **@BotFather**
+2. Send `/newbot` and follow the prompts to name your bot
+3. BotFather will give you a **bot token** like `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`
+4. Save this token — you'll need it for `secrets.yaml`
+
+#### Step 2: Create a supergroup with Forum Topics
+
+1. In Telegram, create a new **Group** (not a channel)
+2. Go to **Group Settings** → **Group type** → set to **Public** (temporarily, to get the chat ID)
+3. Enable **Topics**: Group Settings → **Topics** → toggle on
+4. Create a topic for each product category you want to monitor:
+   - 📱 Smartphones
+   - 💻 Laptops
+   - 🎧 Headphones
+
+#### Step 3: Add the bot to the group
+
+1. Open the group and tap **Add Members**
+2. Search for your bot by username and add it
+3. Go to **Group Settings** → **Administrators** → **Add Admin** → select your bot
+4. Grant these permissions: **Post Messages**, **Edit Messages**
+
+#### Step 4: Get the group chat ID
+
+Send a message in the group, then open this URL in your browser (replace `BOT_TOKEN` with your actual token):
+
+```
+https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
+```
+
+Look for `"chat":{"id":-100xxxxxxxxxx}` in the response. The chat ID is the negative number starting with `-100`.
+
+Alternatively, add **@RawDataBot** to the group temporarily — it will reply with the chat ID.
+
+#### Step 5: Get the topic thread IDs
+
+Each Forum Topic has a `message_thread_id`. To find them:
+
+1. Send a message in each topic
+2. Call `getUpdates` again (see Step 4)
+3. Look for `"message_thread_id":NNN` in each message — that's the topic ID
+
+The **General** topic always has `message_thread_id: 0` (or is omitted).
+
+#### Step 6: Configure DealScout
+
+Add the topic IDs to `config/settings.yaml`:
+
+```yaml
+telegram_topics:
+  smartphone: 42       # message_thread_id for the 📱 Smartphones topic
+  laptop: 43           # message_thread_id for the 💻 Laptops topic
+  headphones: 44       # message_thread_id for the 🎧 Headphones topic
+```
 
 Create `config/secrets.yaml` (gitignored):
 
 ```yaml
-telegram_bot_token: "123456:ABC-DEF..."
+telegram_bot_token: "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
 telegram_channel: "-1001234567890"
 ```
 
 Or use environment variables (takes priority over the file):
 
 ```bash
-export TELEGRAM_BOT_TOKEN="123456:ABC-DEF..."
+export TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
 export TELEGRAM_CHANNEL="-1001234567890"
 ```
+
+#### Step 7: Test the connection
+
+```bash
+# Dry run — finds deals but doesn't send notifications
+./dealscout --config ./config/ --dry-run
+
+# Seed the database first (no notifications)
+./dealscout --config ./config/ --seed
+
+# Full run — sends notifications to Telegram
+./dealscout --config ./config/
+```
+
+> **Tip:** Always run `--seed` first to populate the database without flooding the channel. After seeding, only new products and price drops will trigger notifications.
+
+#### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `telegram credentials missing` | Check `secrets.yaml` exists or env vars are set |
+| `sendPhoto returned 403` | Bot is not an admin in the group |
+| `sendPhoto returned 400` | Invalid `message_thread_id` — verify topic IDs |
+| Notifications go to General instead of a topic | The topic ID is `0` or missing in `telegram_topics` |
+| Image not showing | Telegram couldn't fetch the image URL — falls back to text-only `sendMessage` |
+| Duplicate notifications | Check `notification_cooldown_hours` in `settings.yaml` (default: 24h) |
 
 ## Usage
 
