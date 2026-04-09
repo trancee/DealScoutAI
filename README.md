@@ -1,35 +1,58 @@
 # DealScout
 
-An autonomous price-monitoring agent that scrapes product listings from multiple online shops, tracks prices over time, detects deals based on category-specific rules, and posts notifications to a Telegram channel organized by Forum Topics.
+An autonomous price-monitoring agent that scrapes product listings from multiple Swiss online shops, tracks prices over time, detects deals based on category-specific rules, and posts notifications to a Telegram channel organized by Forum Topics.
 
 ## How it works
 
 ```
-System Cron → Fetch (concurrent) → Parse (HTML/JSON) → Clean → Convert → Evaluate → Notify
+System Cron → Fetch (concurrent) → Parse (HTML/JSON) → Clean → Normalize → Convert → Evaluate → Dedup → Notify
 ```
 
-1. **Fetch** product listings from configured shops (HTML pages or JSON APIs) with rate limiting and retries.
-2. **Parse** products using declarative CSS selectors (HTML) or dot-notation field paths (JSON).
-3. **Clean** product names through a two-stage pipeline: shop-specific artifact removal → category-level normalization. Skip-listed brands and exclusion regex patterns are filtered out.
-4. **Convert** prices to CHF using cached exchange rates (24h TTL).
-5. **Evaluate** deal rules: first-seen products in the price range trigger a deal; returning products trigger a deal when the price drops by at least `min_discount_pct` from the last tracked price. Sanity bounds reject likely parse errors. A cooldown window prevents duplicate notifications.
-6. **Notify** via Telegram `sendPhoto` (with `sendMessage` fallback) to category-specific Forum Topics.
-7. **Prune** old price history, log a run summary, and exit.
+1. **Fetch** product listings from configured shops (HTML pages or JSON APIs) with rate limiting, retries, response caching, and debug dumps.
+2. **Parse** products using declarative CSS selectors (HTML), dot-notation field paths (JSON), or embedded JSON in HTML `<script>` tags.
+3. **Clean** product names through a two-stage pipeline: shop-specific artifact removal → category-level normalization. Skip-listed brands and exclusion regex patterns filter out accessories.
+4. **Normalize** product names to consistent title case with brand-specific corrections (e.g., `APPLE IPHONE 8` → `Apple iPhone 8`).
+5. **Convert** prices to CHF using cached exchange rates (24h TTL).
+6. **Evaluate** deal rules: first-seen products in the price range trigger a deal; returning products trigger a deal when the price drops by at least `min_discount_pct` from the last tracked price. Sanity bounds reject likely parse errors. A cooldown window prevents duplicate notifications.
+7. **Dedup** across shops: if the same product appears from multiple shops, only the cheapest is notified.
+8. **Notify** via Telegram `sendMessage` with MarkdownV2 to category-specific Forum Topics.
+9. **Prune** old price history, log a run summary with all products found, and exit.
 
 DealScout is designed to run via system cron. It is not a long-running daemon.
 
+## Supported shops
+
+| Shop | Type | Method |
+|------|------|--------|
+| Ackermann | HTML | CSS selectors with brand prefix |
+| Alltron | JSON | Two-step API (search + tiles) |
+| Amazon | HTML | CSS selectors |
+| Brack | Embedded JSON | `<script>` tag extraction with price divisor |
+| Conrad | JSON | Two-step API (search + price enrichment) |
+| Foletti | HTML | CSS selectors with pagination |
+| HopCash | JSON | Multi-URL categories (iPhone, Samsung, Others) |
+| Interdiscount | JSON | REST API with array index field paths |
+| Mediamarkt | HTML | `data-test` attribute selectors |
+| mobilezone | JSON | JSONP callback stripping |
+| Orderflow | HTML | Same platform as Foletti |
+
+Galaxus is configured but disabled (blocked by Akamai Bot Manager — requires headless browser).
+
 ## Features
 
-- **Declarative shop configuration** — add new shops via YAML, no code changes needed for standard HTML/JSON shops
-- **Embedded JSON extraction** — parse product data from `<script>` tags in HTML (e.g., JSON-LD, server-side state)
-- **Two-stage product name cleaning** — shop cleaners + category cleaners for cross-shop product matching
-- **Cross-shop price tracking** — one product identity across shops, price history per shop
-- **Smart deal detection** — based on tracked price history, not shop-advertised discounts
-- **Notification deduplication** — configurable cooldown window per product+shop
-- **Concurrent fetching** — shops processed in parallel with a configurable worker pool
-- **Response dumps** — every HTTP response saved to disk with a reproducible `curl` command for debugging
+- **Declarative shop configuration** — add new shops via YAML, no code changes needed
+- **Multiple parser types** — HTML (CSS selectors), JSON (dot-notation), embedded JSON in `<script>` tags
+- **Two-step API enrichment** — search API for product list, secondary API for prices (Conrad, Alltron)
+- **Multi-URL categories** — merge products from multiple URL sources into one category (HopCash)
+- **Dynamic price placeholders** — `{min_price}`, `{max_price}` in URLs resolved from deal rules
+- **Base64-encoded filters** — `{base64_start}...{base64_end}` for shops with encoded URL parameters (Ackermann)
+- **JSONP callback stripping** — `jsonp_callback` config strips wrapper before parsing (mobilezone)
+- **Product name normalization** — title case, brand corrections, model number cleanup across 20+ brands
+- **Cross-shop deduplication** — only notify the cheapest deal per product across all shops
+- **Response caching** — file-based TTL cache (default 25 min) avoids redundant fetches during development
+- **Response dumps** — every HTTP response saved with a reproducible `curl` command for debugging
+- **Telegram proxy support** — HTTP/HTTPS/SOCKS5 proxy for Telegram API requests
 - **Zero CGO** — pure Go, single static binary, cross-compiles to any OS/arch
-- **Minimal dependencies** — 3 direct dependencies: `goquery`, `yaml.v3`, `modernc.org/sqlite`
 
 ## Requirements
 
@@ -74,83 +97,42 @@ exchange_rate_cache_ttl_hours: 24
 log_level: "INFO"            # DEBUG, INFO, WARNING, ERROR
 log_format: "text"           # text or json
 database_path: "data/dealscout.db"
+dump_dir: "data/dumps"
+cache_dir: "data/cache"
+cache_ttl_minutes: 25
 price_history_retention_days: 90
 default_max_pages: 5
 telegram_topics:
-  smartphone: 0              # message_thread_id (0 = General topic)
-  laptop: 0
-  headphones: 0
+  smartphones: 42            # message_thread_id per category
+  laptops: 43
+  headphones: 44
 ```
 
 ### 4. Configure shops
 
-Create `config/shops.yaml`:
+See `config/shops.yaml` for all supported shops. Each shop defines:
 
-```yaml
-shops:
-  - name: "Amazon"
-    source_type: "html"
-    cleaner: "amazon"
-    base_url: "https://www.amazon.de"
-    categories:
-      - category: "smartphone"
-        url: "https://www.amazon.de/s?k=smartphone&page={page}"
-        max_pages: 3
-        pagination:
-          type: "page_param"
-          param: "page"
-          start: 1
-        selectors:
-          product_card: "div[data-component-type='s-search-result']"
-          title: "h2 a span"
-          price: "span.a-price span.a-offscreen"
-          old_price: "span.a-price[data-a-strike] span.a-offscreen"
-          url: "h2 a[href]"
-          image: "img.s-image[src]"
-        currency: "EUR"
+- **HTML shops**: CSS selectors for product card, title, price, old price, URL, image
+- **JSON shops**: dot-notation field paths for products array and fields
+- **Embedded JSON**: CSS selector for `<script>` tag + JSON field paths
+- **Two-step APIs**: primary search + `price_api` for enrichment
 
-  - name: "Galaxus"
-    source_type: "json"
-    method: "POST"
-    cleaner: "galaxus"
-    categories:
-      - category: "smartphone"
-        url: "https://www.galaxus.ch/api/graphql/product-type-filter-products"
-        body_template: "templates/galaxus_smartphone.json"
-        max_pages: 5
-        pagination:
-          type: "offset"
-          param: "offset"
-          per_page: 24
-        fields:
-          products: "data.productType.filterProducts.products.results"
-          title: "product.name"
-          price: "offer.price.amountInclusive"
-          old_price: "offer.insteadOfPrice.price.amountInclusive"
-          url: "product.productId"
-          image: "product.imageUrl"
-        currency: "CHF"
-```
+Price placeholders `{min_price}` and `{max_price}` are resolved from deal rules.
 
 ### 5. Configure deal rules
 
 Create `config/deal_rules.yaml`:
 
 ```yaml
-smartphone:
+smartphones:
   min_price: 50
   max_price: 350
   min_discount_pct: 10
 
-laptop:
+laptops:
   min_price: 400
   max_price: 1200
   min_discount_pct: 15
-
-headphones:
-  min_price: 20
-  max_price: 200
-  min_discount_pct: 5
 ```
 
 ### 6. Configure filters (optional)
@@ -158,77 +140,41 @@ headphones:
 Create `config/filters.yaml`:
 
 ```yaml
-smartphone:
+smartphones:
   skip_brands:
     - Doro
     - Emporia
-  exclusion_regex: "(?i)Cover|Hülle|Schutzfolie"
-
-laptop:
-  skip_brands: []
-  exclusion_regex: "(?i)Tasche|Sleeve"
+  exclusion_regex: '(?i)Adapter|AirTag|Case|Charger|Cover\b|Hülle|Kopfhörer|Ladegerät|Schutzfolie'
 ```
 
 ### 7. Set up Telegram notifications
 
-DealScout sends notifications to a Telegram supergroup with Forum Topics. Each product category (smartphone, laptop, etc.) gets its own topic thread.
+DealScout sends notifications to a Telegram supergroup with Forum Topics. Each product category gets its own topic thread.
 
 #### Step 1: Create a Telegram Bot
 
 1. Open Telegram and search for **@BotFather**
-2. Send `/newbot` and follow the prompts to name your bot
-3. BotFather will give you a **bot token** like `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`
-4. Save this token — you'll need it for `secrets.yaml`
+2. Send `/newbot` and follow the prompts
+3. Save the **bot token** (e.g., `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
 
 #### Step 2: Create a supergroup with Forum Topics
 
-1. In Telegram, create a new **Group** (not a channel)
-2. Go to **Group Settings** → **Group type** → set to **Public** (temporarily, to get the chat ID)
-3. Enable **Topics**: Group Settings → **Topics** → toggle on
-4. Create a topic for each product category you want to monitor:
-   - 📱 Smartphones
-   - 💻 Laptops
-   - 🎧 Headphones
+1. Create a new **Group** → enable **Topics** in settings
+2. Create a topic for each category (📱 Smartphones, 💻 Laptops, etc.)
 
-#### Step 3: Add the bot to the group
+#### Step 3: Add the bot as admin
 
-1. Open the group and tap **Add Members**
-2. Search for your bot by username and add it
-3. Go to **Group Settings** → **Administrators** → **Add Admin** → select your bot
-4. Grant these permissions: **Post Messages**, **Edit Messages**
+Add the bot to the group and promote to admin with **Post Messages** permission.
 
-#### Step 4: Get the group chat ID
-
-Send a message in the group, then open this URL in your browser (replace `BOT_TOKEN` with your actual token):
+#### Step 4: Get the chat ID and topic IDs
 
 ```
 https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
 ```
 
-Look for `"chat":{"id":-100xxxxxxxxxx}` in the response. The chat ID is the negative number starting with `-100`.
+Look for `"chat":{"id":-100xxxxxxxxxx}` and `"message_thread_id":NNN` for each topic.
 
-Alternatively, add **@RawDataBot** to the group temporarily — it will reply with the chat ID.
-
-#### Step 5: Get the topic thread IDs
-
-Each Forum Topic has a `message_thread_id`. To find them:
-
-1. Send a message in each topic
-2. Call `getUpdates` again (see Step 4)
-3. Look for `"message_thread_id":NNN` in each message — that's the topic ID
-
-The **General** topic always has `message_thread_id: 0` (or is omitted).
-
-#### Step 6: Configure DealScout
-
-Add the topic IDs to `config/settings.yaml`:
-
-```yaml
-telegram_topics:
-  smartphone: 42       # message_thread_id for the 📱 Smartphones topic
-  laptop: 43           # message_thread_id for the 💻 Laptops topic
-  headphones: 44       # message_thread_id for the 🎧 Headphones topic
-```
+#### Step 5: Configure credentials
 
 Create `config/secrets.yaml` (gitignored):
 
@@ -237,77 +183,56 @@ telegram_bot_token: "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
 telegram_channel: "-1001234567890"
 ```
 
-Or use environment variables (takes priority over the file):
+Or use environment variables (takes priority):
 
 ```bash
 export TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
 export TELEGRAM_CHANNEL="-1001234567890"
 ```
 
-#### Step 7: Test the connection
+#### Step 6: Test the connection
 
 ```bash
-# Send a test message to each configured topic
-./dealscout --test-telegram
+./dealscout --config ./config/ --test-telegram
 ```
 
-You should see a `✅ DealScout test message` appear in each Forum Topic. If any topic fails, the error will tell you which one and why.
+#### Using a proxy
 
-```bash
-# Then seed the database (no notifications)
-./dealscout --seed
-
-# Dry run — finds deals but doesn't send notifications
-./dealscout --dry-run
-
-# Full run — sends notifications to Telegram
-./dealscout
+```yaml
+# In settings.yaml — HTTP, HTTPS, or SOCKS5
+proxy: "socks5://127.0.0.1:1080"
 ```
-
-> **Tip:** Always run `--seed` first to populate the database without flooding the channel. After seeding, only new products and price drops will trigger notifications.
 
 #### Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| `telegram credentials missing` | Check `secrets.yaml` exists or env vars are set |
-| `sendPhoto 403: ...` or `sendMessage 403: ...` | Bot is not an admin in the group — check the error description |
+| `telegram credentials missing` | Check `secrets.yaml` or env vars |
+| `sendMessage 403: ...` | Bot is not an admin — check error description |
 | `sendMessage 400: ...` | Invalid `message_thread_id` — verify topic IDs |
-| Proxy blocking Telegram API | Set `proxy` in `settings.yaml` (see below) |
-| Notifications go to General instead of a topic | The topic ID is `0` or missing in `telegram_topics` |
-| Image not showing | Telegram couldn't fetch the image URL — falls back to text-only `sendMessage` |
-| Duplicate notifications | Check `notification_cooldown_hours` in `settings.yaml` (default: 24h) |
-
-#### Using a proxy
-
-If your network blocks access to the Telegram API, add a proxy to `config/settings.yaml`:
-
-```yaml
-# HTTP, HTTPS, or SOCKS5 proxy for Telegram API requests
-proxy: "socks5://127.0.0.1:1080"
-# proxy: "http://proxy.example.com:8080"
-```
-
-The proxy is used only for Telegram notifications, not for shop fetching.
+| Messages go to General | Topic ID is `0` or missing in `telegram_topics` |
+| Proxy blocking API | Set `proxy` in `settings.yaml` |
 
 ## Usage
 
 ```bash
 # Full run
-./dealscout
+./dealscout --config ./config/
 
-# Initial DB population — stores products, sends zero notifications
-./dealscout --seed
+# Seed database (no notifications)
+./dealscout --config ./config/ --seed
 
-# Test run — full pipeline, logs deals, doesn't post to Telegram
-./dealscout --dry-run
+# Dry run (find deals, don't notify)
+./dealscout --config ./config/ --dry-run
 
-# Single shop only
-./dealscout --shop "Brack"
+# Single shop
+./dealscout --config ./config/ --shop "Brack"
 
-# Test Telegram connection — sends a message to each topic
-./dealscout --test-telegram
+# Test Telegram
+./dealscout --config ./config/ --test-telegram
 ```
+
+> **Tip:** Always run `--seed` first to populate the database. After seeding, only new products and price drops trigger notifications.
 
 ### Cron setup
 
@@ -318,25 +243,36 @@ The proxy is used only for Telegram notifications, not for shop fetching.
 ### Cross-compilation
 
 ```bash
-# Linux AMD64
-GOOS=linux GOARCH=amd64 make build
-
-# Linux ARM64 (Raspberry Pi)
-GOOS=linux GOARCH=arm64 make build
+GOOS=linux GOARCH=amd64 make build    # Linux AMD64
+GOOS=linux GOARCH=arm64 make build    # Raspberry Pi
 ```
 
-## Telegram notification format
-
-Notifications are sent as photos with a MarkdownV2 caption to category-specific Forum Topics:
+## Notification format
 
 ```
 🔥 Samsung Galaxy A15
-💰 CHF 119.00
-📉 -14% (was CHF 139)
-🏷️ Shop says: CHF 159
-🏪 Galaxus
+💰 CHF 119.00 ~CHF 139.00~ (-14%)
+🏪 Brack
 🔗 View Product
 ```
+
+Price line shows: current price, ~~strikethrough old price~~, discount percentage.
+
+## Run output
+
+At the end of each run, a product table shows all evaluated products:
+
+```
+DEAL PRODUCT                             SHOP             PRICE  OLD PRICE     DROP  REASON              URL
+---- -------                             ----             -----  ---------     ----  ------              ---
+ 🔥  Samsung Galaxy A16                  Brack            99.00                -21%                      https://brack.ch/...
+ 💲  Samsung Galaxy A16                  Conrad          117.95     141.95           insufficient_disc.  https://conrad.ch/...
+     Apple iPhone 17 Pro                 Brack          1049.00                      out_of_range        https://brack.ch/...
+```
+
+- 🔥 = deal, cheapest across shops (will be notified)
+- 💲 = deal, but cheaper exists at another shop
+- (blank) = not a deal (reason shown)
 
 ## Project structure
 
@@ -345,14 +281,15 @@ DealScout/
 ├── cmd/dealscout/main.go              # CLI entry point
 ├── internal/
 │   ├── config/                        # YAML config loading + validation
+│   ├── jsonpath/                      # Shared JSON dot-notation path walker
 │   ├── storage/                       # SQLite (WAL mode) + CRUD operations
 │   ├── fetcher/                       # Rate-limited HTTP with retries + UA rotation
-│   ├── parser/                        # HTML (goquery) + JSON (dot-notation) parsers
-│   │   └── cleaners/                  # Shop + category product name cleaning
+│   ├── parser/                        # HTML, JSON, embedded JSON parsers
+│   │   └── cleaners/                  # Shop cleaners, filters, name normalization
 │   ├── currency/                      # Exchange rate API + SQLite cache
 │   ├── deal/                          # Deal rule engine + deduplication
-│   ├── notifier/                      # Telegram sendPhoto + sendMessage fallback
-│   └── pipeline/                      # Orchestrator with concurrent worker pool
+│   ├── notifier/                      # Telegram sendMessage with MarkdownV2
+│   └── pipeline/                      # Orchestrator: stages, cache, dump, dedup
 ├── config/                            # YAML configuration files
 │   ├── settings.yaml
 │   ├── shops.yaml
@@ -360,6 +297,10 @@ DealScout/
 │   ├── filters.yaml
 │   ├── secrets.yaml                   # Gitignored
 │   └── templates/                     # POST body templates for API shops
+├── data/                              # Runtime data (gitignored)
+│   ├── dealscout.db                   # SQLite database
+│   ├── cache/                         # Response cache (TTL-based)
+│   └── dumps/                         # Response dumps with curl commands
 └── plans/                             # Implementation plans
 ```
 
@@ -376,21 +317,11 @@ DealScout/
 | `make vet` | Run `go vet` |
 | `make fmt` | Format all Go source files |
 | `make check` | vet + lint + test |
-| `make clean` | Remove the compiled binary |
-
-### Running tests directly
-
-```bash
-go test ./...           # All tests
-go test -race ./...     # With race detector
-go test -v ./...        # Verbose output
-```
-
-The test suite covers 53 test functions (83 including sub-cases) across all modules, using in-memory SQLite databases and `httptest` servers — no external services required.
+| `make clean` | Remove binary, cache, and dumps |
 
 ### CI
 
-GitHub Actions runs on every push to `main` and on pull requests. The pipeline runs lint, test (with race detector and coverage), and build. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+GitHub Actions runs on every push to `main` and on pull requests. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## Dependencies
 
@@ -399,6 +330,7 @@ GitHub Actions runs on every push to `main` and on pull requests. The pipeline r
 | [`github.com/PuerkitoBio/goquery`](https://github.com/PuerkitoBio/goquery) | HTML parsing with CSS selectors |
 | [`gopkg.in/yaml.v3`](https://github.com/go-yaml/yaml) | YAML configuration parsing |
 | [`modernc.org/sqlite`](https://gitlab.com/cznic/sqlite) | Pure Go SQLite driver (no CGO) |
+| [`golang.org/x/text`](https://pkg.go.dev/golang.org/x/text) | Unicode-aware title casing for name normalization |
 
 Everything else uses Go's standard library.
 
