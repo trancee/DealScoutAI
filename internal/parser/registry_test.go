@@ -12,7 +12,7 @@ func TestRegistryHTML(t *testing.T) {
 	html, _ := os.ReadFile("testdata/amazon_listing.html")
 
 	cat := config.ShopCategory{
-		Category: "smartphone",
+		Category: "smartphones",
 		Parsing: config.Parsing{
 			Selectors: map[string]string{
 				"product_card": "div[data-component-type='s-search-result']",
@@ -37,7 +37,7 @@ func TestRegistryJSON(t *testing.T) {
 	data, _ := os.ReadFile("testdata/galaxus_response.json")
 
 	cat := config.ShopCategory{
-		Category: "smartphone",
+		Category: "smartphones",
 		Parsing: config.Parsing{
 			Fields: map[string]string{
 				"products": "data.productType.filterProducts.products.results",

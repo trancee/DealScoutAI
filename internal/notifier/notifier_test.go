@@ -35,7 +35,7 @@ func TestEscapeMarkdownV2(t *testing.T) {
 func TestFormatCaptionFirstSeen(t *testing.T) {
 	d := deal.Deal{
 		ProductName: "Samsung Galaxy A15",
-		Category:    "smartphone",
+		Category:    "smartphones",
 		Shop:        "Galaxus",
 		Price:       149.0,
 		URL:         "https://example.com/product",
@@ -67,7 +67,7 @@ func TestFormatCaptionWithDiscount(t *testing.T) {
 	oldPrice := 179.0
 	d := deal.Deal{
 		ProductName: "Samsung Galaxy A15",
-		Category:    "smartphone",
+		Category:    "smartphones",
 		Shop:        "Galaxus",
 		Price:       149.0,
 		OldPrice:    &oldPrice,
@@ -90,7 +90,7 @@ func TestFormatCaptionWithDiscount(t *testing.T) {
 	}
 }
 
-func TestSendUsesPhoto(t *testing.T) {
+func TestSendUsesMessage(t *testing.T) {
 	var calledEndpoint string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calledEndpoint = r.URL.Path
@@ -98,11 +98,11 @@ func TestSendUsesPhoto(t *testing.T) {
 	}))
 	defer server.Close()
 
-	n := notifier.New("tok", "-123", map[string]int{"smartphone": 42}).WithAPIBase(server.URL)
+	n := notifier.New("tok", "-123", map[string]int{"smartphones": 42}).WithAPIBase(server.URL)
 
 	d := deal.Deal{
 		ProductName: "Test Phone",
-		Category:    "smartphone",
+		Category:    "smartphones",
 		Shop:        "TestShop",
 		Price:       100.0,
 		ImageURL:    "https://img.com/test.jpg",
@@ -112,43 +112,8 @@ func TestSendUsesPhoto(t *testing.T) {
 	if err := n.Send(d); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if !strings.Contains(calledEndpoint, "sendPhoto") {
-		t.Errorf("endpoint = %q, want sendPhoto", calledEndpoint)
-	}
-}
-
-func TestSendFallsBackToMessage(t *testing.T) {
-	var endpoints []string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		endpoints = append(endpoints, r.URL.Path)
-		if strings.Contains(r.URL.Path, "sendPhoto") {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
-	defer server.Close()
-
-	n := notifier.New("tok", "-123", map[string]int{"smartphone": 0}).WithAPIBase(server.URL)
-
-	d := deal.Deal{
-		ProductName: "Test Phone",
-		Category:    "smartphone",
-		Shop:        "TestShop",
-		Price:       100.0,
-		ImageURL:    "https://img.com/test.jpg",
-		IsFirstSeen: true,
-	}
-
-	if err := n.Send(d); err != nil {
-		t.Fatalf("Send: %v", err)
-	}
-
-	if len(endpoints) != 2 {
-		t.Fatalf("expected 2 API calls (photo fail + message), got %d", len(endpoints))
-	}
-	if !strings.Contains(endpoints[1], "sendMessage") {
-		t.Errorf("fallback endpoint = %q, want sendMessage", endpoints[1])
+	if !strings.Contains(calledEndpoint, "sendMessage") {
+		t.Errorf("endpoint = %q, want sendMessage", calledEndpoint)
 	}
 }
 
@@ -160,11 +125,11 @@ func TestSendNoImageUsesMessage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	n := notifier.New("tok", "-123", map[string]int{"smartphone": 0}).WithAPIBase(server.URL)
+	n := notifier.New("tok", "-123", map[string]int{"smartphones": 0}).WithAPIBase(server.URL)
 
 	d := deal.Deal{
 		ProductName: "Test Phone",
-		Category:    "smartphone",
+		Category:    "smartphones",
 		Shop:        "TestShop",
 		Price:       100.0,
 		ImageURL:    "",

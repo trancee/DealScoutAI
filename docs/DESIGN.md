@@ -412,7 +412,7 @@ shops:
           image: "product.imageUrl"
         currency: "CHF"
 
-      - category: "laptop"
+      - category: "laptops"
         url: "https://www.galaxus.ch/api/graphql/product-type-filter-products"
         body_template: "templates/galaxus_laptop.json"
         max_pages: 3

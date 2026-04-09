@@ -99,37 +99,7 @@ func (n *Notifier) Send(d deal.Deal) error {
 	caption := FormatCaption(d)
 	topicID := n.topics[d.Category]
 
-	if d.ImageURL != "" {
-		if err := n.sendPhoto(d.ImageURL, caption, topicID); err == nil {
-			return nil
-		}
-		slog.Warn("sendPhoto failed, falling back to sendMessage", "product", d.ProductName)
-	}
-
 	return n.sendMessage(caption, topicID)
-}
-
-func (n *Notifier) sendPhoto(imageURL, caption string, topicID int) error {
-	params := url.Values{
-		"chat_id":           {n.channelID},
-		"photo":             {imageURL},
-		"caption":           {caption},
-		"parse_mode":        {"MarkdownV2"},
-		"message_thread_id": {fmt.Sprintf("%d", topicID)},
-	}
-
-	apiURL := fmt.Sprintf("%s/bot%s/sendPhoto", n.apiBase, n.botToken)
-	resp, err := n.client.PostForm(apiURL, params)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("sendPhoto %d: %s", resp.StatusCode, extractTelegramError(body))
-	}
-	return nil
 }
 
 func (n *Notifier) sendMessage(text string, topicID int) error {

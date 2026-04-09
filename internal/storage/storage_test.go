@@ -44,7 +44,7 @@ func TestUpsertProduct(t *testing.T) {
 	db := mustOpen(t)
 
 	// First insert — should be new.
-	id1, isNew, err := db.UpsertProduct("Samsung Galaxy A15", "smartphone")
+	id1, isNew, err := db.UpsertProduct("Samsung Galaxy A15", "smartphones")
 	if err != nil {
 		t.Fatalf("first UpsertProduct: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestUpsertProduct(t *testing.T) {
 	}
 
 	// Same name+category — should return existing.
-	id2, isNew2, err := db.UpsertProduct("Samsung Galaxy A15", "smartphone")
+	id2, isNew2, err := db.UpsertProduct("Samsung Galaxy A15", "smartphones")
 	if err != nil {
 		t.Fatalf("second UpsertProduct: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestUpsertProduct(t *testing.T) {
 	}
 
 	// Different category — should be new.
-	id3, isNew3, err := db.UpsertProduct("Samsung Galaxy A15", "laptop")
+	id3, isNew3, err := db.UpsertProduct("Samsung Galaxy A15", "laptops")
 	if err != nil {
 		t.Fatalf("third UpsertProduct: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestUpsertProduct(t *testing.T) {
 func TestPriceHistory(t *testing.T) {
 	db := mustOpen(t)
 
-	id, _, _ := db.UpsertProduct("iPhone 16", "smartphone")
+	id, _, _ := db.UpsertProduct("iPhone 16", "smartphones")
 
 	// No history yet.
 	_, found, err := db.LastPrice(id, "Galaxus")
@@ -131,7 +131,7 @@ func TestPriceHistory(t *testing.T) {
 func TestNotificationCooldown(t *testing.T) {
 	db := mustOpen(t)
 
-	id, _, _ := db.UpsertProduct("Pixel 9", "smartphone")
+	id, _, _ := db.UpsertProduct("Pixel 9", "smartphones")
 
 	// No notification yet — cooldown should be false.
 	notified, err := db.WasNotifiedWithinCooldown(id, "Galaxus", 24)
