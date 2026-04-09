@@ -33,10 +33,11 @@ func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Conver
 			defer func() { <-sem }()
 
 			clearShopDumpDir(dumpDir, shop.Name)
-			shopDeals, products, errors := processShop(shop, f, conv, eval, filters, seedMode, dumpDir)
+			shopDeals, shopProducts, products, errors := processShop(shop, f, conv, eval, filters, seedMode, dumpDir)
 
 			mu.Lock()
 			deals = append(deals, shopDeals...)
+			summary.Products = append(summary.Products, shopProducts...)
 			summary.ProductsChecked += products
 			summary.Errors += errors
 			mu.Unlock()
@@ -47,11 +48,12 @@ func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Conver
 	return deals
 }
 
-func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, dumpDir string) ([]deal.Deal, int, int) {
+func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, dumpDir string) ([]deal.Deal, []ProductResult, int, int) {
 	var (
-		deals    []deal.Deal
-		products int
-		errors   int
+		deals     []deal.Deal
+		evaluated []ProductResult
+		products  int
+		errors    int
 	)
 
 	shopClean := cleaners.ShopCleaner(shop.Cleaner)
@@ -113,14 +115,26 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 				}
 
 				result := eval.Evaluate(cleaned, cat.Category, shop.Name, priceCHF, p.OldPrice, p.URL, p.ImageURL)
+
+				pr := ProductResult{
+					Name:   cleaned,
+					Shop:   shop.Name,
+					Price:  priceCHF,
+					Reason: result.Reason,
+				}
+
 				if !seedMode && result.Deal != nil {
+					pr.IsDeal = true
+					pr.Discount = result.Deal.DiscountPct
 					deals = append(deals, *result.Deal)
 				}
+
+				evaluated = append(evaluated, pr)
 			}
 		}
 	}
 
-	return deals, products, errors
+	return deals, evaluated, products, errors
 }
 
 func fetchPage(f *fetcher.Fetcher, shop config.Shop, cat config.ShopCategory, page int) ([]byte, error) {

@@ -19,6 +19,16 @@ type Options struct {
 	DumpDir  string
 }
 
+// ProductResult tracks a product that was evaluated during the run.
+type ProductResult struct {
+	Name     string
+	Shop     string
+	Price    float64
+	Discount float64
+	IsDeal   bool
+	Reason   string
+}
+
 // Summary holds run statistics.
 type Summary struct {
 	ProductsChecked   int
@@ -26,6 +36,7 @@ type Summary struct {
 	NotificationsSent int
 	Errors            int
 	Duration          time.Duration
+	Products          []ProductResult
 }
 
 // Run executes the full pipeline.
@@ -50,6 +61,7 @@ func Run(cfg *config.Config, db *storage.Database, opts Options) Summary {
 	pruneHistory(db, cfg.Settings.PriceHistoryRetentionDays, &summary)
 
 	summary.Duration = time.Since(start)
+	logProducts(summary.Products)
 	logSummary(summary)
 
 	return summary

@@ -4,7 +4,8 @@ smartphone:
     - Doro
     - Emporia
     - Olympia
-  exclusion_regex: "(?i)Adapter|AirTag|Armband|Back Cover|Book Cover|Cable|Case|Charger|Cover\\b|Duftkerze|Earphones|Etui|Gimbal|Halterung|Headset|Hülle|Ideal of Sweden|Induktive|Kalender|Kopfhörer|Ladegerät|Ladestation|Lautsprecher|MagSafe|Powerbank|Schutzfolie|Schutzglas|SmartTag|Stylus|Tastatur|Wireless Charger"
+    - Sonim
+  exclusion_regex: '(?i)\d+W GAN|Adapter|AirTag|Armband|Back Cover|Book Cover|Cable|Case|Charger|Cover\b|Duftkerze|Earphones|Etui|Gimbal|Halterung|Headset|Hülle|Ideal of Sweden|Induktive|Kalender|Kopfhörer|Ladegerät|Ladestation|Lautsprecher|MagSafe|Powerbank|Screen Protector|Schutzfolie|Schutzglas|SmartTag|Stylus|Tastatur|Wireless Charger'
 
 laptop:
   skip_brands: []

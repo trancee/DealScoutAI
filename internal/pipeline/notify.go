@@ -1,7 +1,9 @@
 package pipeline
 
 import (
+	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/trancee/DealScout/internal/config"
@@ -45,6 +47,53 @@ func pruneHistory(db *storage.Database, retentionDays int, summary *Summary) {
 	if deleted > 0 {
 		slog.Info("pruned old price history", "deleted", deleted)
 	}
+}
+
+func logProducts(products []ProductResult) {
+	if len(products) == 0 {
+		return
+	}
+
+	sort.Slice(products, func(i, j int) bool {
+		if products[i].Shop != products[j].Shop {
+			return products[i].Shop < products[j].Shop
+		}
+		return products[i].Price < products[j].Price
+	})
+
+	fmt.Println()
+	fmt.Println("Products found:")
+	fmt.Printf("  %-5s %-35s %-15s %10s %8s  %s\n", "DEAL", "PRODUCT", "SHOP", "PRICE", "DROP", "REASON")
+	fmt.Printf("  %-5s %-35s %-15s %10s %8s  %s\n", "----", "-------", "----", "-----", "----", "------")
+
+	for _, p := range products {
+		marker := "     "
+		if p.IsDeal {
+			marker = "  🔥 "
+		}
+
+		discount := ""
+		if p.Discount > 0 {
+			discount = fmt.Sprintf("-%.0f%%", p.Discount)
+		}
+
+		reason := ""
+		if !p.IsDeal && p.Reason != "" {
+			reason = p.Reason
+		}
+
+		name := p.Name
+		if len(name) > 35 {
+			name = name[:32] + "..."
+		}
+		shop := p.Shop
+		if len(shop) > 15 {
+			shop = shop[:12] + "..."
+		}
+
+		fmt.Printf("%s %-35s %-15s %10.2f %8s  %s\n", marker, name, shop, p.Price, discount, reason)
+	}
+	fmt.Println()
 }
 
 func logSummary(s Summary) {

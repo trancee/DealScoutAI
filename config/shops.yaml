@@ -1,4 +1,22 @@
 shops:
+  - name: "Ackermann"
+    source_type: "html"
+    cleaner: "ackermann"
+    base_url: "https://www.ackermann.ch"
+    categories:
+      - category: "smartphone"
+        # url: "https://www.ackermann.ch/technik/multimedia/smartphones-telefone/?f=eyJmaWx0ZXJfUHJvZHVrdHR5cF8xIjpbImZiX3ByZGt0LnAxX3NtcnQuaG5fMzgiXSwiZmlsdGVyX3ByaWNlIjpbIjUwLTM1MCJdfQ%3D%3D&o=price-asc"
+        url: "https://www.ackermann.ch/technik/multimedia/smartphones-telefone/?f=eyJmaWx0ZXJfS2F0ZWdvcmllIjpbImZiX2t0Z3JfbWJsdC5mbl9kOCJdLCJmaWx0ZXJfcHJpY2UiOlsiNjAtMTUwIl19&o=price-asc"
+        max_pages: 1
+        selectors:
+          product_card: "li.product-card"
+          title: ".product-card-name"
+          price: ".price-value"
+          old_price: ".price-strike"
+          url: ".product-card-name[href]"
+          image: ".product-card-image img[src]"
+        currency: "CHF"
+
   - name: "Amazon"
     source_type: "html"
     cleaner: "amazon"
@@ -50,23 +68,6 @@ shops:
   #         url: "product.productId"
   #         image: "product.imageUrl"
   #       currency: "CHF"
-
-  - name: "Ackermann"
-    source_type: "html"
-    cleaner: "ackermann"
-    base_url: "https://www.ackermann.ch"
-    categories:
-      - category: "smartphone"
-        url: "https://www.ackermann.ch/technik/multimedia/smartphones-telefone/?f=eyJmaWx0ZXJfUHJvZHVrdHR5cF8xIjpbImZiX3ByZGt0LnAxX3NtcnQuaG5fMzgiXSwiZmlsdGVyX3ByaWNlIjpbIjUwLTM1MCJdfQ%3D%3D&o=price-asc"
-        max_pages: 1
-        selectors:
-          product_card: "li.product-card"
-          title: ".product-card-name"
-          price: ".price-value"
-          old_price: ".price-strike"
-          url: ".product-card-name[href]"
-          image: ".product-card-image img[src]"
-        currency: "CHF"
 
   - name: "Brack"
     source_type: "html"
