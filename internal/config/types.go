@@ -44,6 +44,7 @@ type Shop struct {
 type ShopCategory struct {
 	Category      string            `yaml:"category"`
 	URL           string            `yaml:"url"`
+	URLs          []string          `yaml:"urls"`
 	BodyTemplate  string            `yaml:"body_template"`
 	MaxPages      int               `yaml:"max_pages"`
 	Pagination    Pagination        `yaml:"pagination"`

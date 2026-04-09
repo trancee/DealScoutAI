@@ -768,3 +768,4 @@ Run: `go test ./...`
 | 64 | GET price enrichment | `price_api` supports GET with `{ids}` placeholder for comma-joined product IDs (e.g., Alltron tiles API) |
 | 65 | Price API title/image | `title_path` and `image_path` on `price_api` enrich products with title and image from secondary API |
 | 66 | Optional title in JSON | JSON parser allows empty titles for SKU-only search APIs enriched by a secondary API |
+| 67 | Multi-URL categories | `urls` list on ShopCategory merges products from multiple URL sources into one category |

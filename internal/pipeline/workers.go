@@ -64,87 +64,94 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 		cat, priceReplacements := resolvePricePlaceholders(cat, eval.Rules())
 		catFilter := buildFilter(cat.Category, filters)
 
-		for page := range cat.MaxPages {
-			data, cached := cache.get(shop.Name, cat.Category, page)
-			if !cached {
-				var err error
-				data, err = fetchPage(f, shop, cat, page, priceReplacements)
-				if err != nil {
-					slog.Error("fetch failed", "shop", shop.Name, "category", cat.Category, "page", page, "error", err)
-					errors++
-					break
-				}
-				cache.put(shop.Name, cat.Category, page, data)
-			}
+		catURLs := categoryURLs(cat)
 
-			dumpResponse(dumpDir, shop.Name, cat.Category, page,
-				fetchMethod(cat), buildRequestURL(cat, page), shop.Headers, fetchBody(cat, page, priceReplacements), data)
+		for urlIdx, catURL := range catURLs {
+			cacheKey := fmt.Sprintf("%s_%d", cat.Category, urlIdx)
 
-			if cat.JSONPCallback != "" {
-				data = stripJSONP(data, cat.JSONPCallback)
-			}
-
-			rawProducts, err := parser.Parse(cat, data, shop.BaseURL)
-			if err != nil {
-				slog.Error("parse failed", "shop", shop.Name, "category", cat.Category, "error", err)
-				errors++
-				continue
-			}
-
-			if cat.PriceAPI != nil {
-				rawProducts = enrichPrices(rawProducts, cat.PriceAPI, f, cat, shop, dumpDir, cache)
-			}
-
-			parser.ResolveProductURLs(rawProducts, shop.BaseURL, cat.URLTemplate)
-
-			for _, p := range rawProducts {
-				products++
-
-				if cat.PriceDivisor > 0 {
-					p.Price /= cat.PriceDivisor
-					if p.OldPrice != nil {
-						divided := *p.OldPrice / cat.PriceDivisor
-						p.OldPrice = &divided
+			for page := range cat.MaxPages {
+				fetchCat := cat
+				fetchCat.URL = catURL
+				data, cached := cache.get(shop.Name, cacheKey, page)
+				if !cached {
+					var err error
+					data, err = fetchPage(f, shop, fetchCat, page, priceReplacements)
+					if err != nil {
+						slog.Error("fetch failed", "shop", shop.Name, "category", cat.Category, "page", page, "error", err)
+						errors++
+						break
 					}
+					cache.put(shop.Name, cacheKey, page, data)
 				}
 
-				cleaned := p.Title
-				if shopClean != nil {
-					cleaned = shopClean(cleaned)
-				}
-				cleaned = cleaners.NormalizeName(cleaned)
-				if catFilter != nil && catFilter(cleaned) {
-					continue
+				dumpResponse(dumpDir, shop.Name, cacheKey, page,
+					fetchMethod(fetchCat), buildRequestURL(fetchCat, page), shop.Headers, fetchBody(fetchCat, page, priceReplacements), data)
+
+				if cat.JSONPCallback != "" {
+					data = stripJSONP(data, cat.JSONPCallback)
 				}
 
-				priceCHF, err := conv.Convert(p.Price, cat.Currency)
+				rawProducts, err := parser.Parse(cat, data, shop.BaseURL)
 				if err != nil {
-					slog.Warn("currency conversion failed", "product", cleaned, "error", err)
+					slog.Error("parse failed", "shop", shop.Name, "category", cat.Category, "error", err)
 					errors++
 					continue
 				}
 
-				result := eval.Evaluate(cleaned, cat.Category, shop.Name, priceCHF, p.OldPrice, p.URL, p.ImageURL)
-
-				pr := ProductResult{
-					Name:   cleaned,
-					Shop:   shop.Name,
-					Price:  priceCHF,
-					URL:    p.URL,
-					Reason: result.Reason,
+				if cat.PriceAPI != nil {
+					rawProducts = enrichPrices(rawProducts, cat.PriceAPI, f, cat, shop, dumpDir, cache)
 				}
 
-				if !seedMode && result.Deal != nil {
-					pr.IsDeal = true
-					pr.Discount = result.Deal.DiscountPct
-					deals = append(deals, *result.Deal)
-				}
+				parser.ResolveProductURLs(rawProducts, shop.BaseURL, cat.URLTemplate)
 
-				evaluated = append(evaluated, pr)
+				for _, p := range rawProducts {
+					products++
+
+					if cat.PriceDivisor > 0 {
+						p.Price /= cat.PriceDivisor
+						if p.OldPrice != nil {
+							divided := *p.OldPrice / cat.PriceDivisor
+							p.OldPrice = &divided
+						}
+					}
+
+					cleaned := p.Title
+					if shopClean != nil {
+						cleaned = shopClean(cleaned)
+					}
+					cleaned = cleaners.NormalizeName(cleaned)
+					if catFilter != nil && catFilter(cleaned) {
+						continue
+					}
+
+					priceCHF, err := conv.Convert(p.Price, cat.Currency)
+					if err != nil {
+						slog.Warn("currency conversion failed", "product", cleaned, "error", err)
+						errors++
+						continue
+					}
+
+					result := eval.Evaluate(cleaned, cat.Category, shop.Name, priceCHF, p.OldPrice, p.URL, p.ImageURL)
+
+					pr := ProductResult{
+						Name:   cleaned,
+						Shop:   shop.Name,
+						Price:  priceCHF,
+						URL:    p.URL,
+						Reason: result.Reason,
+					}
+
+					if !seedMode && result.Deal != nil {
+						pr.IsDeal = true
+						pr.Discount = result.Deal.DiscountPct
+						deals = append(deals, *result.Deal)
+					}
+
+					evaluated = append(evaluated, pr)
+				}
 			}
 		}
 	}
-
 	return deals, evaluated, products, errors
 }
 
@@ -197,6 +204,16 @@ func stripJSONP(data []byte, callback string) []byte {
 		data = data[:len(data)-1]
 	}
 	return data
+}
+
+func categoryURLs(cat config.ShopCategory) []string {
+	if len(cat.URLs) > 0 {
+		return cat.URLs
+	}
+	if cat.URL != "" {
+		return []string{cat.URL}
+	}
+	return nil
 }
 
 func filterShops(shops []config.Shop, name string) []config.Shop {
@@ -254,6 +271,9 @@ func resolvePricePlaceholders(cat config.ShopCategory, rules map[string]config.D
 
 	r := strings.NewReplacer("{min_price}", minPrice, "{max_price}", maxPrice)
 	cat.URL = r.Replace(cat.URL)
+	for i := range cat.URLs {
+		cat.URLs[i] = r.Replace(cat.URLs[i])
+	}
 
 	// Resolve {base64_start}...{base64_end} — encode inner content as base64.
 	cat.URL = base64PlaceholderRe.ReplaceAllStringFunc(cat.URL, func(match string) string {

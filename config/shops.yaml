@@ -191,6 +191,29 @@ shops:
         url_template: "https://www.interdiscount.ch/de/p/--p{id}"
         currency: "CHF"
 
+  - name: "HopCash"
+    source_type: "json"
+    cleaner: "hopcash"
+    headers:
+      accept: "application/json"
+    categories:
+      - category: "smartphone"
+        urls:
+          - "https://hopcash.ch/214-iphone?q=Prix-CHF-{min_price}-{max_price}&order=product.price.asc&page={page}&from-xhr"
+          - "https://hopcash.ch/263-samsung?q=Prix-CHF-{min_price}-{max_price}&order=product.price.asc&page={page}&from-xhr"
+          - "https://hopcash.ch/491-autres-telephones?q=Prix-CHF-{min_price}-{max_price}&order=product.price.asc&page={page}&from-xhr"
+        max_pages: 5
+        pagination:
+          type: "page_param"
+          param: "page"
+          start: 1
+        fields:
+          products: "products"
+          title: "name"
+          price: "price"
+          url: "link"
+        currency: "CHF"
+
   - name: "Mediamarkt"
     source_type: "html"
     cleaner: "mediamarkt"

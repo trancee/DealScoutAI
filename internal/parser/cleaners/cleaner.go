@@ -33,6 +33,10 @@ func ShopCleaner(shopName string) CleanFunc {
 		return cleanOrderflow
 	case "alltron":
 		return cleanAlltron
+	case "cashconverters":
+		return cleanCashConverters
+	case "hopcash":
+		return cleanHopCash
 	default:
 		return nil
 	}
