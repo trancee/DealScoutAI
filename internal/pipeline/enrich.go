@@ -14,7 +14,7 @@ import (
 
 // enrichPrices fetches prices from a secondary API and merges them into products.
 // Products without a price match are returned with Price=0 (filtered by sanity bounds later).
-func enrichPrices(products []parser.RawProduct, priceAPI *config.PriceAPI, f *fetcher.Fetcher, cat config.ShopCategory, shop config.Shop, dumpDir string) []parser.RawProduct {
+func enrichPrices(products []parser.RawProduct, priceAPI *config.PriceAPI, f *fetcher.Fetcher, cat config.ShopCategory, shop config.Shop, dumpDir string, cache *responseCache) []parser.RawProduct {
 	if priceAPI == nil {
 		return products
 	}
@@ -27,13 +27,19 @@ func enrichPrices(products []parser.RawProduct, priceAPI *config.PriceAPI, f *fe
 		return products
 	}
 
-	data, err := f.Post(priceAPI.URL, body, nil, priceAPI.Headers)
-	if err != nil {
-		slog.Error("price API fetch failed", "url", priceAPI.URL, "error", err)
-		return products
+	priceCacheKey := cat.Category + "_prices"
+	data, cached := cache.get(shop.Name, priceCacheKey, 0)
+	if !cached {
+		var err error
+		data, err = f.Post(priceAPI.URL, body, nil, priceAPI.Headers)
+		if err != nil {
+			slog.Error("price API fetch failed", "url", priceAPI.URL, "error", err)
+			return products
+		}
+		cache.put(shop.Name, priceCacheKey, 0, data)
 	}
 
-	dumpResponse(dumpDir, shop.Name, cat.Category+"_prices", 0,
+	dumpResponse(dumpDir, shop.Name, priceCacheKey, 0,
 		"POST", priceAPI.URL, priceAPI.Headers, body, data)
 
 	priceMap, err := parsePriceResponse(data, priceAPI)

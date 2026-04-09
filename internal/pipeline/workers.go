@@ -16,7 +16,7 @@ import (
 	"github.com/trancee/DealScout/internal/parser/cleaners"
 )
 
-func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, dumpDir string, summary *Summary) []deal.Deal {
+func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, dumpDir string, cache *responseCache, summary *Summary) []deal.Deal {
 	var (
 		mu    sync.Mutex
 		deals []deal.Deal
@@ -33,7 +33,7 @@ func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Conver
 			defer func() { <-sem }()
 
 			clearShopDumpDir(dumpDir, shop.Name)
-			shopDeals, shopProducts, products, errors := processShop(shop, f, conv, eval, filters, seedMode, dumpDir)
+			shopDeals, shopProducts, products, errors := processShop(shop, f, conv, eval, filters, seedMode, dumpDir, cache)
 
 			mu.Lock()
 			deals = append(deals, shopDeals...)
@@ -48,7 +48,7 @@ func collectDeals(shops []config.Shop, f *fetcher.Fetcher, conv *currency.Conver
 	return deals
 }
 
-func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, dumpDir string) ([]deal.Deal, []ProductResult, int, int) {
+func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter, eval *deal.Evaluator, filters map[string]config.Filter, seedMode bool, dumpDir string, cache *responseCache) ([]deal.Deal, []ProductResult, int, int) {
 	var (
 		deals     []deal.Deal
 		evaluated []ProductResult
@@ -62,11 +62,16 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 		catFilter := buildFilter(cat.Category, filters)
 
 		for page := range cat.MaxPages {
-			data, err := fetchPage(f, shop, cat, page)
-			if err != nil {
-				slog.Error("fetch failed", "shop", shop.Name, "category", cat.Category, "page", page, "error", err)
-				errors++
-				break
+			data, cached := cache.get(shop.Name, cat.Category, page)
+			if !cached {
+				var err error
+				data, err = fetchPage(f, shop, cat, page)
+				if err != nil {
+					slog.Error("fetch failed", "shop", shop.Name, "category", cat.Category, "page", page, "error", err)
+					errors++
+					break
+				}
+				cache.put(shop.Name, cat.Category, page, data)
 			}
 
 			dumpResponse(dumpDir, shop.Name, cat.Category, page,
@@ -84,7 +89,7 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 			}
 
 			if cat.PriceAPI != nil {
-				rawProducts = enrichPrices(rawProducts, cat.PriceAPI, f, cat, shop, dumpDir)
+				rawProducts = enrichPrices(rawProducts, cat.PriceAPI, f, cat, shop, dumpDir, cache)
 			}
 
 			for _, p := range rawProducts {

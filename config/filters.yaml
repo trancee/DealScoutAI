@@ -8,6 +8,7 @@ smartphone:
     - Olympia
     - Sonim
     - SPC
+    - TCL
     - Ubiquiti
   exclusion_regex: (?i)\d+W GAN|Adapter|AirTag|Armband|Back Cover|Book Cover|Cable|Case|Charger|Cover\b|Duftkerze|Earphones|Etui|Gimbal|Halterung|Headset|Hülle|Ideal of Sweden|Induktive|Kalender|Kopfhörer|Ladegerät|Ladestation|Lautsprecher|MagSafe|Powerbank|Screen Protector|Schutzfolie|Schutzglas|SmartTag|Stylus|Tastatur|Tisch|Wireless Charger
 

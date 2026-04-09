@@ -22,6 +22,8 @@ type Settings struct {
 	LogFormat                 string         `yaml:"log_format"`
 	DatabasePath              string         `yaml:"database_path"`
 	DumpDir                   string         `yaml:"dump_dir"`
+	CacheDir                  string         `yaml:"cache_dir"`
+	CacheTTLMinutes           int            `yaml:"cache_ttl_minutes"`
 	PriceHistoryRetentionDays int            `yaml:"price_history_retention_days"`
 	DefaultMaxPages           int            `yaml:"default_max_pages"`
 	TelegramTopics            map[string]int `yaml:"telegram_topics"`

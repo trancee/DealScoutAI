@@ -85,6 +85,9 @@ func resolvePaths(configDir string, cfg *Config) {
 	if cfg.Settings.DumpDir != "" && !filepath.IsAbs(cfg.Settings.DumpDir) {
 		cfg.Settings.DumpDir = filepath.Join(configDir, cfg.Settings.DumpDir)
 	}
+	if cfg.Settings.CacheDir != "" && !filepath.IsAbs(cfg.Settings.CacheDir) {
+		cfg.Settings.CacheDir = filepath.Join(configDir, cfg.Settings.CacheDir)
+	}
 	for i := range cfg.Shops {
 		for j := range cfg.Shops[i].Categories {
 			bt := cfg.Shops[i].Categories[j].BodyTemplate
@@ -142,5 +145,11 @@ func applyDefaults(s *Settings) {
 	}
 	if s.DumpDir == "" {
 		s.DumpDir = "data/dumps"
+	}
+	if s.CacheDir == "" {
+		s.CacheDir = "data/cache"
+	}
+	if s.CacheTTLMinutes == 0 {
+		s.CacheTTLMinutes = 25
 	}
 }

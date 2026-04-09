@@ -55,7 +55,8 @@ func Run(cfg *config.Config, db *storage.Database, opts Options) Summary {
 	f := fetcher.New(cfg.Settings.FetchDelaySeconds, cfg.Settings.MaxRetries)
 
 	shops := filterShops(cfg.Shops, opts.ShopName)
-	deals := collectDeals(shops, f, conv, eval, cfg.Filters, opts.Seed, opts.DumpDir, &summary)
+	cache := newResponseCache(cfg.Settings.CacheDir, cfg.Settings.CacheTTLMinutes)
+	deals := collectDeals(shops, f, conv, eval, cfg.Filters, opts.Seed, opts.DumpDir, cache, &summary)
 
 	summary.DealsFound = len(deals)
 	sendNotifications(deals, cfg, db, opts, &summary)
