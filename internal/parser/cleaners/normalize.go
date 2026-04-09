@@ -31,12 +31,15 @@ func NormalizeName(name string) string {
 	// Collapse whitespace.
 	name = multiSpaceRe.ReplaceAllString(name, " ")
 
-	// If all uppercase or all lowercase, title-case it.
-	upper := strings.ToUpper(name)
-	lower := strings.ToLower(name)
-	if name == upper || name == lower {
-		name = titleCaser.String(lower)
+	// Normalize each word: title-case words that are fully uppercase (2+ chars)
+	// but skip words containing digits (model numbers like CE4, A16).
+	words := strings.Split(name, " ")
+	for i, w := range words {
+		if len(w) > 1 && w == strings.ToUpper(w) && w != strings.ToLower(w) && !containsDigit(w) {
+			words[i] = titleCaser.String(strings.ToLower(w))
+		}
 	}
+	name = strings.Join(words, " ")
 
 	// Apply brand/model corrections.
 	for wrong, right := range nameMapping {
@@ -56,4 +59,13 @@ func replaceWord(s, old, new string) string {
 		}
 	}
 	return strings.Join(words, " ")
+}
+
+func containsDigit(s string) bool {
+	for _, c := range s {
+		if c >= '0' && c <= '9' {
+			return true
+		}
+	}
+	return false
 }

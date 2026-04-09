@@ -120,6 +120,7 @@ func processShop(shop config.Shop, f *fetcher.Fetcher, conv *currency.Converter,
 					Name:   cleaned,
 					Shop:   shop.Name,
 					Price:  priceCHF,
+					URL:    p.URL,
 					Reason: result.Reason,
 				}
 

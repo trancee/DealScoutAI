@@ -25,6 +25,7 @@ type ProductResult struct {
 	Shop     string
 	Price    float64
 	Discount float64
+	URL      string
 	IsDeal   bool
 	Reason   string
 }

@@ -63,13 +63,13 @@ func logProducts(products []ProductResult) {
 
 	fmt.Println()
 	fmt.Println("Products found:")
-	fmt.Printf("  %-5s %-35s %-15s %10s %8s  %s\n", "DEAL", "PRODUCT", "SHOP", "PRICE", "DROP", "REASON")
-	fmt.Printf("  %-5s %-35s %-15s %10s %8s  %s\n", "----", "-------", "----", "-----", "----", "------")
+	fmt.Printf("  %-4s %-50s %-15s %10s %8s  %-25s %s\n", "DEAL", "PRODUCT", "SHOP", "PRICE", "DROP", "REASON", "URL")
+	fmt.Printf("  %-4s %-50s %-15s %10s %8s  %-25s %s\n", "----", "-------", "----", "-----", "----", "------", "---")
 
 	for _, p := range products {
-		marker := "     "
+		marker := "    "
 		if p.IsDeal {
-			marker = "  🔥 "
+			marker = " 🔥 "
 		}
 
 		discount := ""
@@ -83,15 +83,15 @@ func logProducts(products []ProductResult) {
 		}
 
 		name := p.Name
-		if len(name) > 35 {
-			name = name[:32] + "..."
+		if len(name) > 50 {
+			name = name[:47] + "..."
 		}
 		shop := p.Shop
 		if len(shop) > 15 {
 			shop = shop[:12] + "..."
 		}
 
-		fmt.Printf("%s %-35s %-15s %10.2f %8s  %s\n", marker, name, shop, p.Price, discount, reason)
+		fmt.Printf("%s %-50s %-15s %10.2f %8s  %-25s %s\n", marker, name, shop, p.Price, discount, reason, p.URL)
 	}
 	fmt.Println()
 }
