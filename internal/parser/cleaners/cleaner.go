@@ -8,38 +8,25 @@ type CleanFunc func(name string) string
 // FilterFunc returns true if a product name should be SKIPPED.
 type FilterFunc func(name string) bool
 
+var shopCleaners = map[string]CleanFunc{
+	"galaxus":        cleanGalaxus,
+	"amazon":         cleanAmazon,
+	"ackermann":      cleanAckermann,
+	"brack":          cleanBrack,
+	"conrad":         cleanConrad,
+	"foletti":        cleanFoletti,
+	"interdiscount":  cleanInterdiscount,
+	"mediamarkt":     cleanMediamarkt,
+	"mobilezone":     cleanMobilezone,
+	"orderflow":      cleanOrderflow,
+	"alltron":        cleanAlltron,
+	"cashconverters": cleanCashConverters,
+	"hopcash":        cleanHopCash,
+}
+
 // ShopCleaner returns a cleaning function for the given shop, or nil if none.
 func ShopCleaner(shopName string) CleanFunc {
-	switch strings.ToLower(shopName) {
-	case "galaxus":
-		return cleanGalaxus
-	case "amazon":
-		return cleanAmazon
-	case "ackermann":
-		return cleanAckermann
-	case "brack":
-		return cleanBrack
-	case "conrad":
-		return cleanConrad
-	case "foletti":
-		return cleanFoletti
-	case "interdiscount":
-		return cleanInterdiscount
-	case "mediamarkt":
-		return cleanMediamarkt
-	case "mobilezone":
-		return cleanMobilezone
-	case "orderflow":
-		return cleanOrderflow
-	case "alltron":
-		return cleanAlltron
-	case "cashconverters":
-		return cleanCashConverters
-	case "hopcash":
-		return cleanHopCash
-	default:
-		return nil
-	}
+	return shopCleaners[strings.ToLower(shopName)]
 }
 
 // CategoryCleaner returns a cleaning function for the given category, or nil if none.

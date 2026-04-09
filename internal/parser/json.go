@@ -3,8 +3,8 @@ package parser
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
+
+	"github.com/trancee/DealScout/internal/jsonpath"
 )
 
 // ParseJSON extracts products from raw JSON using dot-notation field paths.
@@ -21,7 +21,7 @@ func ParseJSON(data []byte, fields map[string]string) ([]RawProduct, error) {
 		return nil, fmt.Errorf("missing required field: products")
 	}
 
-	productsRaw := walkPath(root, productsPath)
+	productsRaw := jsonpath.Walk(root, productsPath)
 
 	var items []interface{}
 	switch v := productsRaw.(type) {
@@ -40,14 +40,14 @@ func ParseJSON(data []byte, fields map[string]string) ([]RawProduct, error) {
 	var products []RawProduct
 
 	for _, item := range items {
-		title := walkString(item, fields["title"])
-		if titlePrefix := walkString(item, fields["title_prefix"]); titlePrefix != "" && title != "" {
+		title := jsonpath.String(item, fields["title"])
+		if titlePrefix := jsonpath.String(item, fields["title_prefix"]); titlePrefix != "" && title != "" {
 			title = titlePrefix + " " + title
 		}
 
 		var price float64
 		if fields["price"] != "" {
-			if p, err := walkFloat(item, fields["price"]); err == nil {
+			if p, err := jsonpath.Float(item, fields["price"]); err == nil {
 				price = p
 			}
 		}
@@ -55,12 +55,12 @@ func ParseJSON(data []byte, fields map[string]string) ([]RawProduct, error) {
 		product := RawProduct{
 			Title:    title,
 			Price:    price,
-			URL:      walkString(item, fields["url"]),
-			ImageURL: walkString(item, fields["image"]),
+			URL:      jsonpath.String(item, fields["url"]),
+			ImageURL: jsonpath.String(item, fields["image"]),
 		}
 
 		if oldPricePath := fields["old_price"]; oldPricePath != "" {
-			if oldPrice, err := walkFloat(item, oldPricePath); err == nil {
+			if oldPrice, err := jsonpath.Float(item, oldPricePath); err == nil {
 				product.OldPrice = &oldPrice
 			}
 		}
@@ -69,63 +69,4 @@ func ParseJSON(data []byte, fields map[string]string) ([]RawProduct, error) {
 	}
 
 	return products, nil
-}
-
-func walkPath(data interface{}, path string) interface{} {
-	if path == "" || data == nil {
-		return data
-	}
-
-	parts := strings.Split(path, ".")
-	current := data
-
-	for _, part := range parts {
-		switch v := current.(type) {
-		case map[string]interface{}:
-			current = v[part]
-		case []interface{}:
-			idx, err := strconv.Atoi(part)
-			if err != nil || idx < 0 || idx >= len(v) {
-				return nil
-			}
-			current = v[idx]
-		default:
-			return nil
-		}
-		if current == nil {
-			return nil
-		}
-	}
-
-	return current
-}
-
-func walkString(data interface{}, path string) string {
-	if path == "" {
-		return ""
-	}
-	val := walkPath(data, path)
-	if val == nil {
-		return ""
-	}
-	return fmt.Sprintf("%v", val)
-}
-
-func walkFloat(data interface{}, path string) (float64, error) {
-	if path == "" {
-		return 0, fmt.Errorf("empty path")
-	}
-	val := walkPath(data, path)
-	if val == nil {
-		return 0, fmt.Errorf("path %q resolved to nil", path)
-	}
-
-	switch v := val.(type) {
-	case float64:
-		return v, nil
-	case string:
-		return ParsePrice(v)
-	default:
-		return 0, fmt.Errorf("unexpected type %T at path %q", val, path)
-	}
 }

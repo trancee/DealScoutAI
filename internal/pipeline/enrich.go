@@ -9,6 +9,7 @@ import (
 
 	"github.com/trancee/DealScout/internal/config"
 	"github.com/trancee/DealScout/internal/fetcher"
+	"github.com/trancee/DealScout/internal/jsonpath"
 	"github.com/trancee/DealScout/internal/parser"
 )
 
@@ -83,26 +84,30 @@ func buildPriceRequestBody(products []parser.RawProduct, priceAPI *config.PriceA
 		return "", fmt.Errorf("loading price API template %s: %w", priceAPI.BodyTemplate, err)
 	}
 
-	var articles []map[string]any
+	var ids []string
 	for _, p := range products {
-		if p.URL == "" {
-			continue
+		if p.URL != "" {
+			ids = append(ids, p.URL)
 		}
+	}
+
+	// Build article objects for the {articles} placeholder (Conrad-style).
+	var articles []map[string]any
+	for _, id := range ids {
 		articles = append(articles, map[string]any{
-			"articleID":         p.URL,
+			"articleID":         id,
 			"insertCode":        "UO",
 			"calculatePrice":    true,
 			"checkAvailability": true,
 			"findExclusions":    true,
 		})
 	}
+	articlesJSON, _ := json.Marshal(articles)
 
-	articlesJSON, err := json.Marshal(articles)
-	if err != nil {
-		return "", fmt.Errorf("marshaling articles: %w", err)
-	}
-
-	return strings.ReplaceAll(string(tpl), "{articles}", string(articlesJSON)), nil
+	body := string(tpl)
+	body = strings.ReplaceAll(body, "{ids}", strings.Join(ids, ","))
+	body = strings.ReplaceAll(body, "{articles}", string(articlesJSON))
+	return body, nil
 }
 
 func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]priceInfo, error) {
@@ -115,7 +120,7 @@ func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]pric
 	isMap := false
 
 	if priceAPI.ProductsPath != "" {
-		raw := walkPath(root, priceAPI.ProductsPath)
+		raw := jsonpath.Walk(root, priceAPI.ProductsPath)
 		switch v := raw.(type) {
 		case []interface{}:
 			items = v
@@ -142,31 +147,31 @@ func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]pric
 	for _, item := range items {
 		var id string
 		if priceAPI.IDPath != "" {
-			id = walkString(item, priceAPI.IDPath)
+			id = jsonpath.String(item, priceAPI.IDPath)
 			id = strings.TrimLeft(id, "0")
 		} else if isMap {
-			id = walkString(item, "sku")
+			id = jsonpath.String(item, "sku")
 		}
 		if id == "" {
 			continue
 		}
 
-		price, err := walkFloat(item, priceAPI.PricePath)
+		price, err := jsonpath.Float(item, priceAPI.PricePath)
 		if err != nil {
 			continue
 		}
 
 		info := priceInfo{price: price}
 		if priceAPI.OldPricePath != "" {
-			if old, err := walkFloat(item, priceAPI.OldPricePath); err == nil && old > 0 {
+			if old, err := jsonpath.Float(item, priceAPI.OldPricePath); err == nil && old > 0 {
 				info.oldPrice = &old
 			}
 		}
 		if priceAPI.TitlePath != "" {
-			info.title = walkString(item, priceAPI.TitlePath)
+			info.title = jsonpath.String(item, priceAPI.TitlePath)
 		}
 		if priceAPI.ImagePath != "" {
-			info.imageURL = walkString(item, priceAPI.ImagePath)
+			info.imageURL = jsonpath.String(item, priceAPI.ImagePath)
 		}
 
 		result[id] = info
@@ -193,44 +198,4 @@ func mergePrices(products []parser.RawProduct, prices map[string]priceInfo) []pa
 		}
 	}
 	return enriched
-}
-
-func walkPath(data interface{}, path string) interface{} {
-	if path == "" || data == nil {
-		return data
-	}
-	parts := strings.Split(path, ".")
-	current := data
-	for _, part := range parts {
-		m, ok := current.(map[string]interface{})
-		if !ok {
-			return nil
-		}
-		current = m[part]
-		if current == nil {
-			return nil
-		}
-	}
-	return current
-}
-
-func walkString(data interface{}, path string) string {
-	val := walkPath(data, path)
-	if val == nil {
-		return ""
-	}
-	return fmt.Sprintf("%v", val)
-}
-
-func walkFloat(data interface{}, path string) (float64, error) {
-	val := walkPath(data, path)
-	if val == nil {
-		return 0, fmt.Errorf("nil")
-	}
-	switch v := val.(type) {
-	case float64:
-		return v, nil
-	default:
-		return 0, fmt.Errorf("unexpected type %T", val)
-	}
 }
