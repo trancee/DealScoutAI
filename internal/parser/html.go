@@ -30,6 +30,11 @@ func ParseHTML(html []byte, selectors map[string]string, baseURL string) ([]RawP
 		if title == "" {
 			return
 		}
+		if prefix := extractText(card, selectors["title_prefix"]); prefix != "" {
+			if !strings.HasPrefix(strings.ToLower(title), strings.ToLower(prefix)) {
+				title = prefix + " " + title
+			}
+		}
 
 		priceStr := extractText(card, selectors["price"])
 		price, err := ParsePrice(priceStr)

@@ -10,6 +10,7 @@ shops:
         max_pages: 1
         selectors:
           product_card: "li.product-card"
+          title_prefix: ".product-card-brand"
           title: ".product-card-name"
           price: ".price-value"
           old_price: ".price-strike"
@@ -132,6 +133,7 @@ shops:
           start: 1
         selectors:
           product_card: "div.item.card"
+          title_prefix: "h4 a strong"
           title: "span.productName a"
           price: "span.first_price span.price"
           old_price: "span.second_price span.price"
@@ -211,6 +213,7 @@ shops:
           start: 1
         selectors:
           product_card: "div.item.card"
+          title_prefix: "h4 a strong"
           title: "span.productName a"
           price: "span.first_price span.price"
           old_price: "span.second_price span.price"

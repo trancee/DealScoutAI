@@ -63,8 +63,8 @@ func logProducts(products []ProductResult) {
 
 	fmt.Println()
 	fmt.Println("Products found:")
-	fmt.Printf("  %-4s %-50s %-15s %10s %8s  %-25s %s\n", "DEAL", "PRODUCT", "SHOP", "PRICE", "DROP", "REASON", "URL")
-	fmt.Printf("  %-4s %-50s %-15s %10s %8s  %-25s %s\n", "----", "-------", "----", "-----", "----", "------", "---")
+	fmt.Printf("%-4s %-50s %-15s %10s %8s  %-25s %s\n", "DEAL", "PRODUCT", "SHOP", "PRICE", "DROP", "REASON", "URL")
+	fmt.Printf("%-4s %-50s %-15s %10s %8s  %-25s %s\n", "----", "-------", "----", "-----", "----", "------", "---")
 
 	for _, p := range products {
 		marker := "    "

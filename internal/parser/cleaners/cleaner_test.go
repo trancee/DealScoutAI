@@ -70,10 +70,12 @@ func TestAckermannShopCleaner(t *testing.T) {
 		input, want string
 	}{
 		{"Smartphone »225, 4G Blau«, Blau, 6,1 cm/2,4 Zoll, 0,128 GB Speicherplatz", "225"},
-		{"Smartphone »Galaxy A16 128 GB Blau/Schwarz«", "Galaxy A16"},
-		{"Smartphone »iPhone 16 Pro 256 GB Desert Titanium«", "iPhone 16 Pro"},
-		{"Smartphone »Redmi Note 14 Pro 5G 256 GB Phantom Purple«", "Redmi Note 14 Pro"},
-		{"Smartphone »moto g85 5G 256 GB Cobalt Blue«", "moto g85"},
+		{"Samsung Smartphone »Galaxy A16 128 GB Blau/Schwarz«", "Samsung Galaxy A16"},
+		{"Apple Smartphone »iPhone 16 Pro 256 GB Desert Titanium«", "Apple iPhone 16 Pro"},
+		{"Xiaomi Smartphone »Redmi Note 14 Pro 5G 256 GB Phantom Purple«", "Xiaomi Redmi Note 14 Pro"},
+		{"Motorola Smartphone »moto g85 5G 256 GB Cobalt Blue«", "Motorola moto g85"},
+		{"TCL Handy »4042S 4G mit Cradle« Grau", "TCL 4042S"},
+		{"ZTE Smartphone »Blade V70 Max« Galactic Gray", "ZTE Blade V70 Max"},
 	}
 
 	for _, tt := range tests {
