@@ -98,16 +98,21 @@ func (n *Notifier) Send(d deal.Deal) error {
 
 	caption := FormatCaption(d)
 	topicID := n.topics[d.Category]
+	if topicID == 0 {
+		slog.Warn("no topic configured for category, sending to General", "category", d.Category, "available_topics", n.topics)
+	}
 
 	return n.sendMessage(caption, topicID)
 }
 
 func (n *Notifier) sendMessage(text string, topicID int) error {
 	params := url.Values{
-		"chat_id":           {n.channelID},
-		"text":              {text},
-		"parse_mode":        {"MarkdownV2"},
-		"message_thread_id": {fmt.Sprintf("%d", topicID)},
+		"chat_id":    {n.channelID},
+		"text":       {text},
+		"parse_mode": {"MarkdownV2"},
+	}
+	if topicID > 0 {
+		params.Set("message_thread_id", fmt.Sprintf("%d", topicID))
 	}
 
 	apiURL := fmt.Sprintf("%s/bot%s/sendMessage", n.apiBase, n.botToken)
