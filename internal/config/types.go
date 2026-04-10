@@ -123,8 +123,8 @@ type TokenEndpoint struct {
 // At runtime, buckets overlapping the deal rule's [min_price, max_price] are selected
 // and formatted into the {price_buckets} URL placeholder.
 type PriceBuckets struct {
-	Format string         `yaml:"format"`
-	Ranges []PriceRange   `yaml:"ranges"`
+	Format string       `yaml:"format"`
+	Ranges []PriceRange `yaml:"ranges"`
 }
 
 // PriceRange defines a single price bucket with start and end values.

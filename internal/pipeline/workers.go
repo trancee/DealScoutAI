@@ -236,4 +236,3 @@ func fetchBody(cat config.ShopCategory, page int, priceReplacements map[string]s
 	}
 	return body
 }
-
