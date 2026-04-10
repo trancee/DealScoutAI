@@ -167,10 +167,36 @@ func (sp *ShopProcessor) parseProducts(data []byte, cat config.ShopCategory) ([]
 	}
 
 	if cat.PriceAPI != nil {
-		rawProducts = enrichPrices(rawProducts, cat.PriceAPI, sp.fetcher, cat, sp.shop, sp.dumpDir, sp.cache)
+		enricher := NewPriceEnricher(cat.PriceAPI, sp.makeFetchFunc(cat))
+		rawProducts = enricher.Enrich(rawProducts)
 	}
 
 	parser.ResolveProductURLs(rawProducts, sp.shop.BaseURL, cat.URLTemplate)
 
 	return rawProducts, nil
+}
+
+// makeFetchFunc creates a FetchFunc that integrates caching and dumping.
+func (sp *ShopProcessor) makeFetchFunc(cat config.ShopCategory) FetchFunc {
+	priceCacheKey := cat.Category + "_prices"
+	return func(method, url, body string, headers map[string]string) ([]byte, error) {
+		data, cached := sp.cache.get(sp.shop.Name, priceCacheKey, 0)
+		if cached {
+			return data, nil
+		}
+
+		var err error
+		if method == "POST" {
+			data, err = sp.fetcher.Post(url, body, nil, headers)
+		} else {
+			data, err = sp.fetcher.Get(url, headers)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		dumpResponse(sp.dumpDir, sp.shop.Name, priceCacheKey, 0, method, url, headers, body, data)
+		sp.cache.put(sp.shop.Name, priceCacheKey, 0, data)
+		return data, nil
+	}
 }

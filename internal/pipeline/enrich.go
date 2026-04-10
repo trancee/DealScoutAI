@@ -8,90 +8,80 @@ import (
 	"strings"
 
 	"github.com/trancee/DealScout/internal/config"
-	"github.com/trancee/DealScout/internal/fetcher"
 	"github.com/trancee/DealScout/internal/jsonpath"
 	"github.com/trancee/DealScout/internal/parser"
 )
 
-// enrichPrices fetches prices from a secondary API and merges them into products.
-// Products without a price match are returned with Price=0 (filtered by sanity bounds later).
-func enrichPrices(products []parser.RawProduct, priceAPI *config.PriceAPI, f *fetcher.Fetcher, cat config.ShopCategory, shop config.Shop, dumpDir string, cache *responseCache) []parser.RawProduct {
-	if priceAPI == nil {
+// FetchFunc abstracts HTTP fetching for testability.
+// GET: body is empty. POST: body is the request body.
+type FetchFunc func(method, url, body string, headers map[string]string) ([]byte, error)
+
+// PriceEnricher fetches prices from a secondary API and merges them into products.
+type PriceEnricher struct {
+	api   *config.PriceAPI
+	fetch FetchFunc
+}
+
+// NewPriceEnricher creates an enricher for the given price API config.
+func NewPriceEnricher(api *config.PriceAPI, fetch FetchFunc) *PriceEnricher {
+	return &PriceEnricher{api: api, fetch: fetch}
+}
+
+// Enrich fetches prices and merges them into products.
+// Products without a price match are dropped.
+func (pe *PriceEnricher) Enrich(products []parser.RawProduct) []parser.RawProduct {
+	if pe.api == nil || len(products) == 0 {
 		return products
 	}
 
 	slog.Debug("enriching prices", "products", len(products))
 
-	var ids []string
-	for _, p := range products {
-		if p.URL != "" {
-			ids = append(ids, p.URL)
-		}
-	}
-	if len(ids) == 0 {
+	data, err := pe.fetchPriceData(products)
+	if err != nil {
+		slog.Error("price API fetch failed", "error", err)
 		return products
 	}
 
-	priceCacheKey := cat.Category + "_prices"
-	data, cached := cache.get(shop.Name, priceCacheKey, 0)
-	if !cached {
-		var err error
-		if priceAPI.BodyTemplate != "" {
-			body, buildErr := buildPriceRequestBody(products, priceAPI)
-			if buildErr != nil {
-				slog.Error("building price API request", "error", buildErr)
-				return products
-			}
-			data, err = f.Post(priceAPI.URL, body, nil, priceAPI.Headers)
-			if err != nil {
-				slog.Error("price API fetch failed", "url", priceAPI.URL, "error", err)
-				return products
-			}
-			dumpResponse(dumpDir, shop.Name, priceCacheKey, 0,
-				"POST", priceAPI.URL, priceAPI.Headers, body, data)
-		} else {
-			url := strings.ReplaceAll(priceAPI.URL, "{ids}", strings.Join(ids, ","))
-			data, err = f.Get(url, priceAPI.Headers)
-			if err != nil {
-				slog.Error("price API fetch failed", "url", url, "error", err)
-				return products
-			}
-			dumpResponse(dumpDir, shop.Name, priceCacheKey, 0,
-				"GET", url, priceAPI.Headers, "", data)
-		}
-		cache.put(shop.Name, priceCacheKey, 0, data)
-	}
-
-	priceMap, err := parsePriceResponse(data, priceAPI)
+	priceMap, err := ParsePriceResponse(data, pe.api)
 	if err != nil {
 		slog.Error("parsing price API response", "error", err)
 		return products
 	}
 
-	return mergePrices(products, priceMap)
+	return MergePrices(products, priceMap)
 }
 
-type priceInfo struct {
-	price    float64
-	oldPrice *float64
-	title    string
-	imageURL string
-}
-
-func buildPriceRequestBody(products []parser.RawProduct, priceAPI *config.PriceAPI) (string, error) {
-	tpl, err := os.ReadFile(priceAPI.BodyTemplate)
-	if err != nil {
-		return "", fmt.Errorf("loading price API template %s: %w", priceAPI.BodyTemplate, err)
-	}
-
-	var ids []string
-	for _, p := range products {
-		if p.URL != "" {
-			ids = append(ids, p.URL)
+func (pe *PriceEnricher) fetchPriceData(products []parser.RawProduct) ([]byte, error) {
+	if pe.api.BodyTemplate != "" {
+		body, err := BuildPriceRequestBody(products, pe.api)
+		if err != nil {
+			return nil, err
 		}
+		return pe.fetch("POST", pe.api.URL, body, pe.api.Headers)
 	}
 
-	// Build article objects for the {articles} placeholder (Conrad-style).
+	ids := collectIDs(products)
+	url := strings.ReplaceAll(pe.api.URL, "{ids}", strings.Join(ids, ","))
+	return pe.fetch("GET", url, "", pe.api.Headers)
+}
+
+// PriceInfo holds enrichment data for a single product.
+type PriceInfo struct {
+	Price    float64
+	OldPrice *float64
+	Title    string
+	ImageURL string
+}
+
+// BuildPriceRequestBody constructs the POST body for a price API call.
+func BuildPriceRequestBody(products []parser.RawProduct, api *config.PriceAPI) (string, error) {
+	tpl, err := os.ReadFile(api.BodyTemplate)
+	if err != nil {
+		return "", fmt.Errorf("loading price API template %s: %w", api.BodyTemplate, err)
+	}
+
+	ids := collectIDs(products)
+
 	var articles []map[string]any
 	for _, id := range ids {
 		articles = append(articles, map[string]any{
@@ -110,7 +100,8 @@ func buildPriceRequestBody(products []parser.RawProduct, priceAPI *config.PriceA
 	return body, nil
 }
 
-func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]priceInfo, error) {
+// ParsePriceResponse extracts price info from a secondary API response.
+func ParsePriceResponse(data []byte, api *config.PriceAPI) (map[string]PriceInfo, error) {
 	var root interface{}
 	if err := json.Unmarshal(data, &root); err != nil {
 		return nil, fmt.Errorf("parsing price response: %w", err)
@@ -119,8 +110,8 @@ func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]pric
 	var items []interface{}
 	isMap := false
 
-	if priceAPI.ProductsPath != "" {
-		raw := jsonpath.Walk(root, priceAPI.ProductsPath)
+	if api.ProductsPath != "" {
+		raw := jsonpath.Walk(root, api.ProductsPath)
 		switch v := raw.(type) {
 		case []interface{}:
 			items = v
@@ -132,7 +123,7 @@ func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]pric
 				}
 			}
 		default:
-			return nil, fmt.Errorf("price products path %q resolved to %T", priceAPI.ProductsPath, raw)
+			return nil, fmt.Errorf("price products path %q resolved to %T", api.ProductsPath, raw)
 		}
 	} else if m, ok := root.(map[string]interface{}); ok {
 		isMap = true
@@ -143,11 +134,11 @@ func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]pric
 		}
 	}
 
-	result := make(map[string]priceInfo, len(items))
+	result := make(map[string]PriceInfo, len(items))
 	for _, item := range items {
 		var id string
-		if priceAPI.IDPath != "" {
-			id = jsonpath.String(item, priceAPI.IDPath)
+		if api.IDPath != "" {
+			id = jsonpath.String(item, api.IDPath)
 			id = strings.TrimLeft(id, "0")
 		} else if isMap {
 			id = jsonpath.String(item, "sku")
@@ -156,22 +147,22 @@ func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]pric
 			continue
 		}
 
-		price, err := jsonpath.Float(item, priceAPI.PricePath)
+		price, err := jsonpath.Float(item, api.PricePath)
 		if err != nil {
 			continue
 		}
 
-		info := priceInfo{price: price}
-		if priceAPI.OldPricePath != "" {
-			if old, err := jsonpath.Float(item, priceAPI.OldPricePath); err == nil && old > 0 {
-				info.oldPrice = &old
+		info := PriceInfo{Price: price}
+		if api.OldPricePath != "" {
+			if old, err := jsonpath.Float(item, api.OldPricePath); err == nil && old > 0 {
+				info.OldPrice = &old
 			}
 		}
-		if priceAPI.TitlePath != "" {
-			info.title = jsonpath.String(item, priceAPI.TitlePath)
+		if api.TitlePath != "" {
+			info.Title = jsonpath.String(item, api.TitlePath)
 		}
-		if priceAPI.ImagePath != "" {
-			info.imageURL = jsonpath.String(item, priceAPI.ImagePath)
+		if api.ImagePath != "" {
+			info.ImageURL = jsonpath.String(item, api.ImagePath)
 		}
 
 		result[id] = info
@@ -180,22 +171,34 @@ func parsePriceResponse(data []byte, priceAPI *config.PriceAPI) (map[string]pric
 	return result, nil
 }
 
-func mergePrices(products []parser.RawProduct, prices map[string]priceInfo) []parser.RawProduct {
+// MergePrices joins price data back into products by URL/ID.
+// Products without a match are dropped.
+func MergePrices(products []parser.RawProduct, prices map[string]PriceInfo) []parser.RawProduct {
 	var enriched []parser.RawProduct
 	for _, p := range products {
 		if info, ok := prices[p.URL]; ok {
-			p.Price = info.price
-			if info.oldPrice != nil {
-				p.OldPrice = info.oldPrice
+			p.Price = info.Price
+			if info.OldPrice != nil {
+				p.OldPrice = info.OldPrice
 			}
-			if info.title != "" {
-				p.Title = info.title
+			if info.Title != "" {
+				p.Title = info.Title
 			}
-			if info.imageURL != "" {
-				p.ImageURL = info.imageURL
+			if info.ImageURL != "" {
+				p.ImageURL = info.ImageURL
 			}
 			enriched = append(enriched, p)
 		}
 	}
 	return enriched
+}
+
+func collectIDs(products []parser.RawProduct) []string {
+	var ids []string
+	for _, p := range products {
+		if p.URL != "" {
+			ids = append(ids, p.URL)
+		}
+	}
+	return ids
 }
