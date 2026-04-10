@@ -158,14 +158,14 @@ Fatal errors (config parse failure, DB can't open, missing Telegram credentials)
 
 | File | Responsibility |
 |---|---|
-| `fetcher.go` | Downloads a URL with configurable delay between requests, User-Agent rotation, optional proxy support, and exponential-backoff retries on HTTP 429/5xx. Supports GET and POST (with body from template files, placeholders replaced for pagination). Applies per-shop custom HTTP headers (e.g., CSRF tokens). Logs request/response details at DEBUG level. |
+| `fetcher.go` | Downloads a URL with configurable delay between requests, User-Agent rotation, optional proxy support, and exponential-backoff retries on HTTP 429/5xx. Forces HTTP/1.1 (disables HTTP/2 negotiation to avoid stream errors with certain APIs). Supports GET and POST (with body from template files, placeholders replaced for pagination). Applies per-shop custom HTTP headers (e.g., CSRF tokens). Logs request/response details at DEBUG level. |
 
 #### `internal/parser/`
 
 | File | Responsibility |
 |---|---|
 | `html.go` | Generic HTML parser. Uses CSS selectors (via goquery) declared in `shops.yaml` to find product cards and extract fields (title, price, old_price, URL, image). |
-| `json.go` | Generic JSON parser. Uses dot-notation field paths declared in `shops.yaml` to walk response JSON and extract product arrays and fields. |
+| `json.go` | Generic JSON parser. Uses dot-notation field paths declared in `shops.yaml` to walk response JSON and extract product arrays and fields. Supports `title_prefix` (prepended) and `title_suffix` (appended) for composite titles. |
 | `price.go` | Shared price string parser. Handles all European formats: `CHF 119.–`, `€ 99,90`, `1'299.00`, `1.299,00`, etc. Strips currency symbols, normalizes separators, returns `float64`. |
 | `registry.go` | Resolves a shop config to the correct parser type (HTML, JSON, or embedded JSON) + optional shop cleaner + category cleaner. |
 | `cleaners/shops/*.go` | Per-shop cleaning functions. Strip shop-specific artifacts from product names. |
@@ -529,7 +529,7 @@ Template files live in `config/templates/`. They contain the raw POST body with 
 }]
 ```
 
-Placeholders (`{offset}`, `{page}`) are replaced by the fetcher based on the pagination config.
+Placeholders (`{offset}`, `{page}`, `{min_price}`, `{max_price}`, `{price_buckets}`) are replaced by the fetcher/pipeline based on the pagination config and deal rules.
 
 ---
 
@@ -761,7 +761,7 @@ Run: `go test ./...`
 | 57 | Orderflow shop | HTML parsing (same platform as Foletti), expanded accessory exclusion filter |
 | 58 | Response dump | Each shop fetch is saved to `dump_dir/<shop>/<category>.<page>.txt` with curl command header; cleared per shop on each run |
 | 59 | Response cache | File-based TTL cache (`cache_dir`, default 25 min) skips HTTP fetches when fresh cached response exists |
-| 60 | Dynamic price placeholders | `{min_price}`, `{max_price}` in URLs and templates resolved from deal rules; `{base64_start}...{base64_end}` for encoded filters |
+| 60 | Dynamic price placeholders | `{min_price}`, `{max_price}` in URLs and templates resolved from deal rules; `{base64_start}...{base64_end}` for encoded filters; `{price_buckets}` for predefined price range selection |
 | 61 | Data directory at root | `data/` lives at project root (CWD), not under config dir |
 | 62 | URL resolution after enrichment | Product URLs resolved after price enrichment to avoid corrupting IDs used by secondary APIs |
 | 63 | URL template | `url_template` with `{id}` placeholder for shops with custom product URL patterns (e.g., Conrad, Interdiscount, Alltron) |
@@ -769,3 +769,12 @@ Run: `go test ./...`
 | 65 | Price API title/image | `title_path` and `image_path` on `price_api` enrich products with title and image from secondary API |
 | 66 | Optional title in JSON | JSON parser allows empty titles for SKU-only search APIs enriched by a secondary API |
 | 67 | Multi-URL categories | `urls` list on ShopCategory merges products from multiple URL sources into one category |
+| 68 | Dynamic bearer tokens | `token_endpoint` on Shop fetches a JWT/bearer token from a URL (via JSON path) and injects `Authorization: Bearer` header for all shop requests (Conforama via Coveo/OCC) |
+| 69 | Price bucket filtering | `price_buckets` on Shop defines predefined ranges + format string; `{price_buckets}` placeholder in URLs auto-selects overlapping buckets based on deal rules (PostShop) |
+| 70 | Title suffix | `title_suffix` field path appended to product title (e.g., subname with specs from Conforama) |
+| 71 | URL cleaners | Per-shop URL cleaning registry strips tracking query params from product URLs (Ackermann) |
+| 72 | HTTP/1.1 forced | Fetcher disables HTTP/2 via empty `TLSNextProto` to avoid stream errors with certain APIs (Brack) |
+| 73 | Category-aware normalization | `NormalizeName` and `productNormalizer` receive the product category to apply category-specific brand rules |
+| 74 | Ackermann JSON API | Switched from HTML scraping to GraphQL API (POST /api/gateway/) with category-specific body templates |
+| 75 | Conforama shop | Coveo Commerce v2 listing API with dynamic token from OCC endpoint (no auth needed for token) |
+| 76 | PostShop | OCC search API with predefined price bucket filtering via `{price_buckets}` placeholder |

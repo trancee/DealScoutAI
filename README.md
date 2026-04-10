@@ -24,10 +24,10 @@ DealScout is designed to run via system cron. It is not a long-running daemon.
 
 | Shop | Type | Method |
 |------|------|--------|
-| Ackermann | HTML | CSS selectors with brand prefix |
+| Ackermann | JSON | GraphQL API (POST /api/gateway/) with offset pagination |
 | Alltron | JSON | Two-step API (search + tiles) |
-| Amazon | HTML | CSS selectors |
-| Brack | Embedded JSON | `<script>` tag extraction with price divisor |
+| Brack | Embedded JSON | `<script>` tag extraction with price divisor, `limit=192` |
+| Conforama | JSON | Coveo Commerce v2 listing API with dynamic bearer token |
 | Conrad | JSON | Two-step API (search + price enrichment) |
 | Foletti | HTML | CSS selectors with pagination |
 | HopCash | JSON | Multi-URL categories (iPhone, Samsung, Others) |
@@ -35,6 +35,7 @@ DealScout is designed to run via system cron. It is not a long-running daemon.
 | Mediamarkt | HTML | `data-test` attribute selectors |
 | mobilezone | JSON | JSONP callback stripping |
 | Orderflow | HTML | Same platform as Foletti |
+| PostShop | JSON | OCC search API with dynamic price bucket filtering |
 
 Galaxus is configured but disabled (blocked by Akamai Bot Manager — requires headless browser).
 
@@ -43,14 +44,18 @@ Galaxus is configured but disabled (blocked by Akamai Bot Manager — requires h
 - **Declarative shop configuration** — add new shops via YAML, no code changes needed
 - **Multiple parser types** — HTML (CSS selectors), JSON (dot-notation), embedded JSON in `<script>` tags
 - **Two-step API enrichment** — search API for product list, secondary API for prices (Conrad, Alltron)
+- **Dynamic bearer tokens** — `token_endpoint` fetches authentication tokens before API calls (Conforama)
 - **Multi-URL categories** — merge products from multiple URL sources into one category (HopCash)
 - **Dynamic price placeholders** — `{min_price}`, `{max_price}` in URLs resolved from deal rules
+- **Price bucket filtering** — `price_buckets` auto-selects predefined price ranges matching deal rules (PostShop)
 - **Base64-encoded filters** — `{base64_start}...{base64_end}` for shops with encoded URL parameters (Ackermann)
 - **JSONP callback stripping** — `jsonp_callback` config strips wrapper before parsing (mobilezone)
 - **Product name normalization** — title case, brand corrections, model number cleanup across 20+ brands
+- **URL cleaning** — per-shop URL cleaners strip tracking query parameters (Ackermann)
 - **Cross-shop deduplication** — only notify the cheapest deal per product across all shops
 - **Response caching** — file-based TTL cache (default 25 min) avoids redundant fetches during development
 - **Response dumps** — every HTTP response saved with a reproducible `curl` command for debugging
+- **HTTP/1.1 fallback** — fetcher disables HTTP/2 to avoid stream errors with certain APIs
 - **Telegram proxy support** — HTTP/HTTPS/SOCKS5 proxy for Telegram API requests
 - **Zero CGO** — pure Go, single static binary, cross-compiles to any OS/arch
 
@@ -116,8 +121,10 @@ See `config/shops.yaml` for all supported shops. Each shop defines:
 - **JSON shops**: dot-notation field paths for products array and fields
 - **Embedded JSON**: CSS selector for `<script>` tag + JSON field paths
 - **Two-step APIs**: primary search + `price_api` for enrichment
+- **Token-authenticated APIs**: `token_endpoint` fetches a bearer token before requests (Conforama)
+- **Price bucket filtering**: `price_buckets` on the shop defines predefined ranges; `{price_buckets}` in URLs is resolved at runtime by selecting buckets overlapping the deal rule's price range (PostShop)
 
-Price placeholders `{min_price}` and `{max_price}` are resolved from deal rules.
+Price placeholders `{min_price}` and `{max_price}` are resolved from deal rules. Title fields support `title_prefix` (prepended) and `title_suffix` (appended).
 
 ### 5. Configure deal rules
 
@@ -289,7 +296,7 @@ DealScout/
 │   ├── currency/                      # Exchange rate API + SQLite cache
 │   ├── deal/                          # Deal rule engine + deduplication
 │   ├── notifier/                      # Telegram sendMessage with MarkdownV2
-│   └── pipeline/                      # Orchestrator: stages, cache, dump, dedup
+│   └── pipeline/                      # Orchestrator: stages, cache, dump, dedup, price resolution
 ├── config/                            # YAML configuration files
 │   ├── settings.yaml
 │   ├── shops.yaml
